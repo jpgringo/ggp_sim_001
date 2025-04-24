@@ -3,7 +3,9 @@
 import Config
 
 config :gene_prototype_0001,
-  udp_port: 7400
+  receive_port: 7400,
+  send_ip: "127.0.0.1",
+  send_port: 7401
 
 config :logger,
   level: :info,

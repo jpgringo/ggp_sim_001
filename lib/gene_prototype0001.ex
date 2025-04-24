@@ -8,9 +8,11 @@ defmodule GenePrototype0001 do
 
   def start(_type, _args) do
     Logger.info("Starting application...")
-    udp_port = Application.get_env(:gene_prototype_0001, :udp_port, 7400)
+    receive_port = Application.get_env(:gene_prototype_0001, :receive_port, 7400)
+    send_ip = Application.get_env(:gene_prototype_0001, :send_ip, "127.0.0.1")
+    send_port = Application.get_env(:gene_prototype_0001, :send_port, 7401) 
     children = [
-      {GenePrototype0001.ExternalConnectionSupervisor, udp_port: udp_port}
+      {GenePrototype0001.ExternalConnectionSupervisor, receive_port: receive_port, send_ip: send_ip, send_port: send_port}
     ]
     opts = [strategy: :one_for_one, name: GenePrototype0001.Supervisor]
     Supervisor.start_link(children, opts)
