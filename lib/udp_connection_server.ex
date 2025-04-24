@@ -17,7 +17,15 @@ defmodule GenePrototype0001.UdpConnectionServer do
 
   @impl true
   def handle_info({:udp, _socket, ip, port, data}, state) do
-    Logger.info("Received UDP message from #{:inet.ntoa(ip)}:#{port}: #{inspect(data)}")
+    client_string = "#{:inet.ntoa(ip)}:#{port}"
+    case Jason.decode(data) do
+      {:ok, %{"method" => method, "params" => params}} ->
+        Logger.info("Received '#{method}' request from #{client_string} with params: #{inspect(params)}")
+      {:ok, _} ->
+        Logger.info("Invalid JSON-RPC request from #{client_string}: #{inspect(data)}")
+      {:error, _} ->
+        Logger.info("Bad packet received from #{client_string}")
+    end
     {:noreply, state}
   end
 
