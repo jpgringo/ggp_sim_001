@@ -21,3 +21,7 @@ gene_prototype_0001-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Godot 4+ specific ignores
+.godot/
+/android/
