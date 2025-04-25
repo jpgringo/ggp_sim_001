@@ -41,7 +41,7 @@ defmodule GenePrototype0001.UdpConnectionServer do
     notification = Jason.encode!(%{
       "jsonrpc" => "2.0",
       "method" => "message",
-      "params" => ["hello from Elixir!"]
+      "params" => ["hello from Elixir!", "turtle_01", 3, [-5, 2.2, 0, 0, -1.8, 4, 0]]
     })
     :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
     {:reply, "Hello from UDP server!", state}
