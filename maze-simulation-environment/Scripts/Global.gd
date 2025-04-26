@@ -19,6 +19,7 @@ func _ready():
 	transmit("sim_ready", [0,1,2,3])
 	
 func _exit_tree():
+	transmit("sim_stopping", [])
 	running = false
 	if receiver_thread and receiver_thread.is_alive():
 		print("Shutting down receiver...")
@@ -41,7 +42,7 @@ func start_transmitter():
 	udp_transmitter.set_dest_address(DEST_IP, DEST_PORT)
 	
 
-func _listen_loop(userdata : Variant = null):
+func _listen_loop(_userdata : Variant = null):
 	while running:
 		if udp_receiver.get_available_packet_count() > 0:
 			var packet := udp_receiver.get_packet()
@@ -62,15 +63,15 @@ func _listen_loop(userdata : Variant = null):
 				_handle_json_rpc(parsed, sender_ip, sender_port)
 		OS.delay_msec(10)  # avoid spinning
 
-func _handle_json_rpc(json_rpc: Dictionary, ip: String, port: int) -> void:
-	var method = json_rpc.get("method", "")
-	var params = json_rpc.get("params", null)
-	var id = json_rpc.get("id", null)
+func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
+	var method = msg.get("method", "")
+	var params = msg.get("params", null)
+	var id = msg.get("id", null)
 
 	print("JSON-RPC Method: %s, Params: %s, ID: %s" % [method, str(params), str(id)])
 	# You can now dispatch by method, e.g.
 	# if method == "ping": ...
 
 func transmit(method: String, data: Array):
-	var notification = json_rpc.make_notification(method, data)
-	udp_transmitter.put_packet(JSON.stringify(notification).to_utf8_buffer())
+	var msg = json_rpc.make_notification(method, data)
+	udp_transmitter.put_packet(JSON.stringify(msg).to_utf8_buffer())
