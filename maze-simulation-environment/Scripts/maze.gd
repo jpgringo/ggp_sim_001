@@ -27,7 +27,7 @@ func create_maze():
 	generate_unbreakables()
 
 func generate_unbreakables():
-	#--------------------------------- Ubreakables ------------------------------
+	#--------------------------------- Unbreakables ------------------------------
 	# Generate unbreakable walls at the borders on Layer 2
 	for x in range(map_width):
 		for y in range(map_height):
