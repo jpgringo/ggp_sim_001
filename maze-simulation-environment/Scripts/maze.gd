@@ -1,6 +1,7 @@
 extends Node2D
 
 @onready var tilemap = $TileMap
+@onready var unbreakable_layer = $TileMap/UNBREAKABLE_TILE
 @onready var spawned_players = $SpawnedPlayers
 
 const INITIAL_WIDTH = 30
@@ -31,7 +32,7 @@ func generate_unbreakables():
 	for x in range(map_width):
 		for y in range(map_height):
 			if x == 0 or x == map_width - 1 or y == 0 or y == map_height - 1:
-				tilemap.set_cell(UNBREAKABLE_TILE_LAYER, Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
+				unbreakable_layer.set_cell(Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
 
 
 func spawn_players(player_scene, instance_count = 1):
