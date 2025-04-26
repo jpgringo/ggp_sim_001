@@ -13,6 +13,7 @@
 [ext_resource type="Texture2D" uid="uid://doij6ua7o2kmb" path="res://AssetsBomberClone/players/char_01/up_3.png" id="10_giabu"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_3xwsh"]
+radius = 13.0
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_elim0"]
 animations = [{
@@ -78,6 +79,7 @@ animations = [{
 
 [node name="Turtle" type="CharacterBody2D"]
 position = Vector2(100, 100)
+scale = Vector2(0.8, 0.8)
 script = ExtResource("1_waqwf")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
@@ -86,3 +88,5 @@ shape = SubResource("CircleShape2D_3xwsh")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_elim0")
 animation = &"idle"
+
+[node name="Node2D" type="Node2D" parent="."]

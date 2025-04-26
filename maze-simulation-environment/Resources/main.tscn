@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://cotndeojd48xo"]
+
+[ext_resource type="PackedScene" uid="uid://t2qgl1riqywd" path="res://Scenes/maze.tscn" id="1_h05gq"]
+[ext_resource type="PackedScene" uid="uid://bkmuyh6ahs8ok" path="res://Scenes/turtle.tscn" id="2_et3gk"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Maze" parent="." instance=ExtResource("1_h05gq")]
+
+[node name="Turtle" parent="." instance=ExtResource("2_et3gk")]

@@ -1,0 +1,33 @@
+[gd_resource type="TileSet" load_steps=7 format=3 uid="uid://bojjrhgvhci8i"]
+
+[ext_resource type="Texture2D" uid="uid://du60knqxficsk" path="res://Assets/maze_tiles/ground_0.png" id="1_iegwr"]
+[ext_resource type="Texture2D" uid="uid://bbweld4xj7pml" path="res://Assets/maze_tiles/wall_0.png" id="2_8e4ns"]
+[ext_resource type="Texture2D" uid="uid://bqt04jjca5ar8" path="res://Assets/maze_tiles/breakable_0.png" id="3_f4ycx"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_k61lp"]
+resource_name = "BACKGROUND_TILE"
+texture = ExtResource("1_iegwr")
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_lky5b"]
+resource_name = "BREAKABLE_TILE"
+texture = ExtResource("2_8e4ns")
+0:0/0 = 0
+1:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_v57ti"]
+resource_name = "UNBREAKABLE_TILE"
+texture = ExtResource("3_f4ycx")
+0:0/0 = 0
+1:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+
+[resource]
+physics_layer_0/collision_layer = 1
+navigation_layer_0/layers = 1
+sources/0 = SubResource("TileSetAtlasSource_k61lp")
+sources/1 = SubResource("TileSetAtlasSource_lky5b")
+sources/2 = SubResource("TileSetAtlasSource_v57ti")

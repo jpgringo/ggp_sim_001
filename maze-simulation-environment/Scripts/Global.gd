@@ -1,5 +1,9 @@
 extends Node
 
+var maze_scene = preload("res://Scenes/maze.tscn")
+var turtle_scene = preload("res://Scenes/turtle.tscn")
+
+# communication consts/vars
 var udp_receiver : PacketPeerUDP
 var udp_transmitter : PacketPeerUDP
 var receiver_thread : Thread
@@ -11,6 +15,9 @@ var running := true
 const LOCAL_PORT := 7401
 const DEST_IP := "127.0.0.1"
 const DEST_PORT := 7400
+
+# other declarations
+var player
 
 func _ready():
 	print("Global.gd has loaded")
