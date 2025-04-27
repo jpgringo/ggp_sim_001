@@ -15,6 +15,9 @@ var speed = 100
 var previous_velocity = Vector2.ZERO
 
 func _ready():
+	# Transmit agent creation message
+	Global.transmit("agent_created", {"id": self.get_instance_id(), "actuators": 1})
+	
 	# Setup velocity heartbeat timer
 	heartbeat_timer = Timer.new()
 	heartbeat_timer.name = "VelocityHeartbeatTimer"
@@ -61,6 +64,12 @@ func update_animation(input_direction: Vector2):
 		animated_sprite.play("up")
 	elif input_direction.y > 0:
 		animated_sprite.play("down")
+
+
+func _notification(what):
+	# Called when the node is about to be destroyed
+	if what == NOTIFICATION_PREDELETE:
+		Global.transmit("agent_destroyed", {"id": self.get_instance_id()})
 
 func _on_heartbeat():
 	# Send current velocity data regardless of whether it has changed

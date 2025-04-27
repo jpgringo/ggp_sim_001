@@ -79,6 +79,6 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 	# You can now dispatch by method, e.g.
 	# if method == "ping": ...
 
-func transmit(method: String, data: Array):
+func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)
 	udp_transmitter.put_packet(JSON.stringify(msg).to_utf8_buffer())
