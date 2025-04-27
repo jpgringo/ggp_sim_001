@@ -15,7 +15,7 @@ defmodule GenePrototype0001.UdpConnectionServer do
   @impl true
   def init(opts) do
     send_ip = Keyword.get(opts, :send_ip, "127.0.0.1")
-    send_port = Keyword.get(opts, :send_port, 7401)   
+    send_port = Keyword.get(opts, :send_port, 7401)
     receive_port = Keyword.fetch!(opts, :receive_port)
     {:ok, socket} = :gen_udp.open(receive_port, [:binary, active: true, reuseaddr: true])
     Logger.info("UDP server listening on port #{receive_port}")
@@ -28,6 +28,7 @@ defmodule GenePrototype0001.UdpConnectionServer do
     case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->
         Logger.info("Received '#{method}' request from #{client_string} with params: #{inspect(params)}")
+        handle_rpc_call(method, params, state)
       {:ok, _} ->
         Logger.info("Invalid JSON-RPC request from #{client_string}: #{inspect(data)}")
       {:error, _} ->
@@ -51,5 +52,37 @@ defmodule GenePrototype0001.UdpConnectionServer do
   def terminate(_reason, %{socket: socket}) do
     :gen_udp.close(socket)
     :ok
+  end
+
+  # Private functions
+  defp handle_rpc_call("agent_created", %{"id" => agent_id} = params, state) do    Logger.info("Agent created: #{inspect(params)}")
+    case GenePrototype0001.OntosSupervisor.start_ontos(agent_id) do
+      {:ok, pid} ->
+        Logger.info("Started Ontos for agent #{agent_id} with pid #{inspect(pid)}")
+      {:error, reason} ->
+        Logger.error("Failed to start Ontos for agent #{agent_id}: #{inspect(reason)}")
+    end
+    {:noreply, state}
+  end
+
+  defp handle_rpc_call("agent_destroyed", %{"id" => agent_id} = params, state) do
+    case Registry.lookup(GenePrototype0001.OntosRegistry, agent_id) do
+      [{pid, _}] ->
+        Logger.info("Terminating Ontos for agent #{agent_id}")
+        GenePrototype0001.OntosSupervisor.terminate_ontos(pid)
+      [] ->
+        Logger.warn("No Ontos found for agent #{agent_id}")
+    end
+    {:noreply, state}
+  end
+
+  defp handle_rpc_call("sensor_data", [id, data], state) do
+    Logger.info("Sensor data received: #{inspect([id, data])}")
+    {:noreply, state}
+  end
+
+  defp handle_rpc_call(method, _params, state) do
+    Logger.warn("Unknown method received: #{inspect(method)}")
+    {:noreply, state}
   end
 end

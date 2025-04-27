@@ -15,7 +15,7 @@ defmodule GenePrototype0001.MixProject do
   def application do
     [
       extra_applications: [:logger, :runtime_tools, :wx, :observer],
-      mod: {GenePrototype0001, []}
+      mod: {GenePrototype0001.Application, []}
     ]
   end
 
