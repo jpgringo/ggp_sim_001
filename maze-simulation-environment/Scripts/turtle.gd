@@ -76,10 +76,10 @@ func _on_heartbeat():
 	transmit_velocity_reading()
 
 func transmit_velocity_reading():
-	Global.transmit("sensor_data", [
-		VELOCITY_SENSOR_ID,
-		PackedFloat32Array([velocity.x, velocity.y])
-	])
+	Global.transmit("sensor_data", {
+		"agent": self.get_instance_id(),
+		"data": [VELOCITY_SENSOR_ID, PackedFloat32Array([velocity.x, velocity.y])]
+	})
 	
 func transmit_collision_event(collision):
 	# only pass data that would be 'knowable' from a collision sensor, not 'omniscient' Godot game logic
@@ -91,8 +91,7 @@ func transmit_collision_event(collision):
 		# the main node's instance ID is probably good for identifying the agent, but for geometry
 		# calculations we probably want collision.get_local_shape()
 		"agent": self.get_instance_id(),
-		"sensor": 0,
-		"data": PackedFloat32Array([to_local(collision.get_position()).x, to_local(collision.get_position()).y, collision.get_normal().x, collision.get_normal().y])
+		"data": [TOUCH_SENSOR_ID, PackedFloat32Array([to_local(collision.get_position()).x, to_local(collision.get_position()).y, collision.get_normal().x, collision.get_normal().y])]
 	}
 	print("collision data:", data)
-	Global.transmit("sensor_data", [TOUCH_SENSOR_ID, data])
+	Global.transmit("sensor_data", data)

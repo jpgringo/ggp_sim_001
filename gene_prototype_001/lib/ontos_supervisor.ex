@@ -13,8 +13,9 @@ defmodule GenePrototype0001.OntosSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  def start_ontos(agent_id) do
-    spec = {GenePrototype0001.Ontos, agent_id}
+  def start_ontos(agent_id, params \\ %{}) do
+    available_actuators = Map.get(params, "actuators", 0)
+    spec = {GenePrototype0001.Ontos, {agent_id, [available_actuators: available_actuators]}}
     DynamicSupervisor.start_child(__MODULE__, spec)
   end
 

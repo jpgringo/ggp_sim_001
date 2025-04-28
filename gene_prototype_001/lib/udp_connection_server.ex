@@ -7,6 +7,10 @@ defmodule GenePrototype0001.UdpConnectionServer do
     GenServer.call(__MODULE__, :hello_world)
   end
 
+  def send_actuator_data(agent_id, data) do
+    GenServer.call(__MODULE__, {:send_actuator_data, agent_id, data})
+  end
+
   def start_link(opts) do
     Logger.info("Starting UDP server...")
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -49,14 +53,29 @@ defmodule GenePrototype0001.UdpConnectionServer do
   end
 
   @impl true
+  def handle_call({:send_actuator_data, agent_id, data}, _from, state = %{socket: socket, send_ip: send_ip, send_port: send_port}) do
+    notification = Jason.encode!(%{
+      "jsonrpc" => "2.0",
+      "method" => "actuator_data",
+      "params" => %{
+        "agent" => agent_id,
+        "data" => data
+      }
+    })
+    :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
+    {:reply, :ok, state}
+  end
+
+  @impl true
   def terminate(_reason, %{socket: socket}) do
     :gen_udp.close(socket)
     :ok
   end
 
   # Private functions
-  defp handle_rpc_call("agent_created", %{"id" => agent_id} = params, state) do    Logger.info("Agent created: #{inspect(params)}")
-    case GenePrototype0001.OntosSupervisor.start_ontos(agent_id) do
+  defp handle_rpc_call("agent_created", %{"id" => agent_id} = params, state) do
+    Logger.info("Agent created: #{inspect(params)}")
+    case GenePrototype0001.OntosSupervisor.start_ontos(agent_id, params) do
       {:ok, pid} ->
         Logger.info("Started Ontos for agent #{agent_id} with pid #{inspect(pid)}")
       {:error, reason} ->
@@ -76,8 +95,13 @@ defmodule GenePrototype0001.UdpConnectionServer do
     {:noreply, state}
   end
 
-  defp handle_rpc_call("sensor_data", [id, data], state) do
-    Logger.info("Sensor data received: #{inspect([id, data])}")
+  defp handle_rpc_call("sensor_data", %{"agent" => agent_id, "data" => data}, state) do
+    case Registry.lookup(GenePrototype0001.OntosRegistry, agent_id) do
+      [{_pid, _}] ->
+        GenePrototype0001.Ontos.handle_sensor_data(agent_id, data)
+      [] ->
+        Logger.warn("Received sensor data for unknown agent #{agent_id}")
+    end
     {:noreply, state}
   end
 
