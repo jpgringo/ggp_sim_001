@@ -8,7 +8,7 @@ config :gene_prototype_0001,
   send_port: 7401
 
 config :logger,
-  level: :info,
+  level: :debug,
   handle_otp_reports: true,
   handle_sasl_reports: true
 

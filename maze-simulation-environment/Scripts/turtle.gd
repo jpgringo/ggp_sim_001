@@ -100,8 +100,10 @@ func actuator_input(data: Array):
 			self.is_remote_controlled = true
 			print("Turtle %d is now remotely controlled: %s" % [self.get_instance_id(), self.is_remote_controlled])
 			
+			var motion = Vector2(values[0], values[1])
+			
 			# Set velocity based on the two values (x, y)
-			velocity = Vector2(values[0], values[1]).normalized() * speed
+			velocity = motion.normalized() * speed
 			
 			# Update animation based on the new velocity
 			update_animation(velocity)
@@ -121,3 +123,9 @@ func transmit_collision_event(collision):
 	}
 	print("collision data:", data)
 	Global.transmit("sensor_data", data)
+	
+	# Immediately send a reset message to clear the collision state
+	Global.transmit("sensor_data", {
+		"agent": self.get_instance_id(),
+		"data": [TOUCH_SENSOR_ID, PackedFloat32Array([0.0, 0.0, 0.0, 0.0])]
+	})

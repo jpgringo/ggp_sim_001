@@ -1,7 +1,6 @@
 defmodule GenePrototype0001.Ontos do
   use GenServer
   require Logger
-  import Nx.Defn
 
   # Client API
   def start_link({agent_id, opts}) do
@@ -26,10 +25,6 @@ defmodule GenePrototype0001.Ontos do
   end
 
   # Server callbacks
-  # Constants for sensor data storage
-  @max_sensor_history 1000  # Maximum number of readings to keep per sensor
-  @max_sensors 100         # Maximum number of sensors per Ontos
-  @default_dtype {:f, 32}  # Default dtype for Nx tensors
 
   @impl true
   def init({agent_id, opts}) do
@@ -48,7 +43,7 @@ defmodule GenePrototype0001.Ontos do
     end
 
     # Create ETS table for sensor data
-    # Each entry is {sensor_id, write_pos, circular_buffer}
+    # Each entry is {sensor_id, values}
     table_name = sensor_table_name(agent_id)
     :ets.new(table_name, [:named_table, :public, :set])
 
@@ -57,9 +52,7 @@ defmodule GenePrototype0001.Ontos do
       available_actuators: available_actuators,
       numen_supervisor: numen_sup,
       numen_pids: numen_pids,
-      sensor_table: table_name,
-      tensor_cache: nil,       # Cached Nx tensor of sensor data
-      tensor_cache_valid: false # Whether the cache is valid
+      sensor_table: table_name
     }}
   end
 
@@ -68,14 +61,9 @@ defmodule GenePrototype0001.Ontos do
     {:reply, state, state}
   end
 
-  def handle_call(:get_sensor_tensor, _from, %{tensor_cache_valid: true, tensor_cache: cache} = state) do
-    {:reply, cache, state}
-  end
-
-  def handle_call(:get_sensor_tensor, _from, state) do
-    tensor = build_sensor_tensor(state.sensor_table)
-    new_state = %{state | tensor_cache: tensor, tensor_cache_valid: true}
-    {:reply, tensor, new_state}
+  def handle_call(:get_sensor_data, _from, state) do
+    data = get_all_sensor_data(state.sensor_table)
+    {:reply, data, state}
   end
 
   @impl true
@@ -101,53 +89,36 @@ defmodule GenePrototype0001.Ontos do
   end
 
   @impl true
-  def handle_cast({:sensor_data, [sensor_id, values]}, state) when sensor_id == 0 and length(values) >= 2 do
-    # Store sensor data
-    new_state = update_sensor_data(state, sensor_id, values)
-
-    case values do
-      # Match both +0.0 and -0.0
-      [v1, v2 | _] when v1 in [+0.0, -0.0] and v2 in [+0.0, -0.0] ->
-        # Generate two random numbers between -1.0 and 1.0
-        random_values = [:rand.uniform() * 2 - 1, :rand.uniform() * 2 - 1]
-        payload = [0, random_values]
-
-        GenePrototype0001.UdpConnectionServer.send_actuator_data(
-          state.agent_id,
-          payload
-        )
-
-        Logger.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
-
-      _ ->
-        Logger.debug("Ontos #{state.agent_id} received non-zero velocity: #{inspect(values)}")
-    end
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast({:sensor_data, [sensor_id, values]}, state) when sensor_id == 1 do
-    # Store sensor data
-    new_state = update_sensor_data(state, sensor_id, values)
-
-    # When touch sensor is triggered, send command to stop movement
-    stop_command = [0, [0.0, 0.0]]
-
-    GenePrototype0001.UdpConnectionServer.send_actuator_data(
-      state.agent_id,
-      stop_command
-    )
-
-    Logger.info("Ontos #{state.agent_id} detected collision, sending stop command: #{inspect(stop_command)}")
-    {:noreply, new_state}
-  end
-
-  @impl true
   def handle_cast({:sensor_data, [sensor_id, values]}, state) do
-    # Store sensor data even for unhandled sensor types
+    # Store sensor data
     new_state = update_sensor_data(state, sensor_id, values)
-    Logger.debug("Ontos #{state.agent_id} received unhandled sensor data: #{inspect([sensor_id, values])}")
+
+    # Get current sensor data and notify all Numina
+    data = get_all_sensor_data(new_state.sensor_table)
+    Enum.each(new_state.numen_pids, fn pid ->
+      GenServer.cast(pid, {:process_sensor_data, data})
+    end)
+
+    Logger.debug("Ontos #{state.agent_id} received sensor data: #{inspect([sensor_id, values])}")
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info({:numen_commands, commands}, state) do
+    # Process commands from Numina
+    Enum.each(commands, fn command ->
+      case command do
+        {:actuator_data, payload} ->
+          GenePrototype0001.UdpConnectionServer.send_actuator_data(
+            state.agent_id,
+            payload
+          )
+          Logger.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
+        _ ->
+          Logger.warning("Ontos #{state.agent_id} received unknown command: #{inspect(command)}")
+      end
+    end)
+    {:noreply, state}
   end
 
   # Helper functions
@@ -155,22 +126,10 @@ defmodule GenePrototype0001.Ontos do
     {:via, Registry, {GenePrototype0001.OntosRegistry, agent_id}}
   end
 
-  defp update_sensor_data(state, sensor_id, values) when sensor_id < @max_sensors do
-    table = state.sensor_table
-    case :ets.lookup(table, sensor_id) do
-      [] ->
-        # First reading for this sensor
-        buffer = :array.new(@max_sensor_history, fixed: true)
-        buffer = :array.set(0, values, buffer)
-        :ets.insert(table, {sensor_id, 1, buffer})
-      [{^sensor_id, write_pos, buffer}] ->
-        # Update existing sensor data
-        new_pos = rem(write_pos, @max_sensor_history)
-        new_buffer = :array.set(new_pos, values, buffer)
-        :ets.insert(table, {sensor_id, new_pos + 1, new_buffer})
-    end
-    # Invalidate tensor cache since data changed
-    %{state | tensor_cache_valid: false}
+  defp update_sensor_data(state, sensor_id, values) do
+    # Simply store the latest values for this sensor
+    :ets.insert(state.sensor_table, {sensor_id, values})
+    state
   end
 
   defp sensor_table_name(agent_id) do
@@ -179,35 +138,14 @@ defmodule GenePrototype0001.Ontos do
   end
 
   @doc """
-  Get sensor data as an Nx tensor. Shape will be {@max_sensors, max_values_per_sensor}.
-  Missing values are filled with 0.0.
+  Get current sensor data as a list of {sensor_id, values} tuples.
   """
-  def get_sensor_tensor(agent_id) do
-    GenServer.call(via_tuple(agent_id), :get_sensor_tensor)
+  def get_sensor_data(agent_id) do
+    GenServer.call(via_tuple(agent_id), :get_sensor_data)
   end
 
-  # Efficiently builds an Nx tensor from the ETS sensor data
-  def build_sensor_tensor(table) do
-    # Create a zero-filled tensor
-    base = Nx.broadcast(0.0, {@max_sensors, @max_sensor_history}, type: @default_dtype)
-    
-    # Collect all sensor data and prepare tensors
-    sensors = :ets.tab2list(table)
-    
-    # Update tensor with sensor data
-    Enum.reduce(sensors, base, fn {sensor_id, write_pos, buffer}, acc ->
-      values = :array.to_list(buffer)
-      # Only take up to write_pos values to avoid uninitialized data
-      valid_values = Enum.take(values, min(write_pos, @max_sensor_history))
-      
-      # Convert to tensor outside of defn
-      row_tensor = Nx.tensor(valid_values, type: @default_dtype)
-      update_sensor_slice(acc, sensor_id, row_tensor)
-    end)
-  end
-
-  # This is the part that can be JIT compiled since it takes tensors as input
-  defnp update_sensor_slice(tensor, sensor_id, row_tensor) do
-    Nx.put_slice(tensor, [sensor_id, 0], row_tensor)
+  # Get all sensor data from ETS
+  defp get_all_sensor_data(table) do
+    :ets.tab2list(table)
   end
 end

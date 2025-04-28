@@ -5,15 +5,18 @@ defmodule GenePrototype0001.Numina.NumenSupervisor do
     DynamicSupervisor.start_link(__MODULE__, init_arg, name: via_tuple(init_arg))
   end
 
-  def start_numen(supervisor, numen_module, init_arg) do
-    spec = %{
-      id: numen_module,
-      start: {numen_module, :start_link, [init_arg]},
-      restart: :permanent,
-      type: :worker
-    }
+  def start_numen(supervisor, numen_module, agent_id) do
+    # Get the Ontos pid from the registry
+    ontos_pid = case Registry.lookup(GenePrototype0001.OntosRegistry, agent_id) do
+      [{pid, _}] -> pid
+      _ -> nil
+    end
 
-    DynamicSupervisor.start_child(supervisor, spec)
+    if ontos_pid do
+      DynamicSupervisor.start_child(supervisor, {numen_module, {agent_id, ontos_pid}})
+    else
+      {:error, :ontos_not_found}
+    end
   end
 
   def terminate_numen(supervisor, pid) when is_pid(pid) do
