@@ -76,8 +76,16 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 	var id = msg.get("id", null)
 
 	print("JSON-RPC Method: %s, Params: %s, ID: %s" % [method, str(params), str(id)])
-	# You can now dispatch by method, e.g.
-	# if method == "ping": ...
+
+	if method == "actuator_data" and params is Dictionary:
+		var agent_id = params.get("agent")
+		var data = params.get("data")
+		if agent_id != null and data != null:
+			var node = instance_from_id(agent_id)
+			if node and node.has_method("actuator_input"):
+				node.actuator_input(data)
+			else:
+				print("Warning: Could not find turtle with ID %d or turtle lacks actuator_input method" % agent_id)
 
 func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)
