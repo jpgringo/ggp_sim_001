@@ -84,13 +84,13 @@ defmodule GenePrototype0001.UdpConnectionServer do
     {:noreply, state}
   end
 
-  defp handle_rpc_call("agent_destroyed", %{"id" => agent_id} = params, state) do
+  defp handle_rpc_call("agent_destroyed", %{"id" => agent_id}, state) do
     case Registry.lookup(GenePrototype0001.OntosRegistry, agent_id) do
       [{pid, _}] ->
         Logger.info("Terminating Ontos for agent #{agent_id}")
         GenePrototype0001.OntosSupervisor.terminate_ontos(pid)
       [] ->
-        Logger.warn("No Ontos found for agent #{agent_id}")
+        Logger.warning("No Ontos found for agent #{agent_id}")
     end
     {:noreply, state}
   end
@@ -100,13 +100,13 @@ defmodule GenePrototype0001.UdpConnectionServer do
       [{_pid, _}] ->
         GenePrototype0001.Ontos.handle_sensor_data(agent_id, data)
       [] ->
-        Logger.warn("Received sensor data for unknown agent #{agent_id}")
+        Logger.warning("Received sensor data for unknown agent #{agent_id}")
     end
     {:noreply, state}
   end
 
   defp handle_rpc_call(method, _params, state) do
-    Logger.warn("Unknown method received: #{inspect(method)}")
+    Logger.warning("Unknown method received: #{inspect(method)}")
     {:noreply, state}
   end
 end

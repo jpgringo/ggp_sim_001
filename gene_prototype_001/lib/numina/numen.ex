@@ -6,8 +6,6 @@ defmodule GenePrototype0001.Numina.Numen do
   @callback handle_custom(msg :: term(), state :: term()) ::
               {:noreply, new_state :: term()} | {:stop, reason :: term(), new_state :: term()}
 
-  use GenServer
-
   defmacro __using__(_opts) do
     quote do
       use GenServer
