@@ -35,9 +35,6 @@ func _physics_process(_delta):
 	# Only process keyboard input if we're not being controlled remotely
 	if not is_remote_controlled:
 		velocity = input_direction.normalized() * speed
-		print("Turtle %d using keyboard control" % [self.get_instance_id()])
-	else: 
-		print("Turtle %d is being controlled remotely" % [self.get_instance_id()])
 	
 	# Transmit velocity data if changed
 	if velocity != previous_velocity:

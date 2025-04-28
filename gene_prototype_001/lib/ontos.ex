@@ -51,6 +51,20 @@ defmodule GenePrototype0001.Ontos do
   end
 
   @impl true
+  def handle_cast({:sensor_data, [sensor_id, values]}, state) when sensor_id == 1 do
+    # When touch sensor is triggered, send command to stop movement
+    stop_command = [0, [0.0, 0.0]]
+    
+    GenePrototype0001.UdpConnectionServer.send_actuator_data(
+      state.agent_id,
+      stop_command
+    )
+    
+    Logger.info("Ontos #{state.agent_id} detected collision, sending stop command: #{inspect(stop_command)}")
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_cast({:sensor_data, data}, state) do
     Logger.debug("Ontos #{state.agent_id} received unhandled sensor data: #{inspect(data)}")
     {:noreply, state}
