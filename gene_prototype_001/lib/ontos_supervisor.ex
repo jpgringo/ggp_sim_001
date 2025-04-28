@@ -15,7 +15,8 @@ defmodule GenePrototype0001.OntosSupervisor do
 
   def start_ontos(agent_id, params \\ %{}) do
     available_actuators = Map.get(params, "actuators", 0)
-    spec = {GenePrototype0001.Ontos, {agent_id, [available_actuators: available_actuators]}}
+    numina = Map.get(params, "numina", [GenePrototype0001.Numina.BasicMotionNumen])
+    spec = {GenePrototype0001.Ontos, {agent_id, [available_actuators: available_actuators, numina: numina]}}
     DynamicSupervisor.start_child(__MODULE__, spec)
   end
 

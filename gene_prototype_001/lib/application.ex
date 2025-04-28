@@ -6,6 +6,8 @@ defmodule GenePrototype0001.Application do
     children = [
       # Registry for Ontos instances
       {Registry, keys: :unique, name: GenePrototype0001.OntosRegistry},
+      # Registry for Numina instances
+      {Registry, keys: :unique, name: GenePrototype0001.Registry},
       # Dynamic supervisor for Ontos instances
       {GenePrototype0001.OntosSupervisor, []},
       # External connection supervisor
