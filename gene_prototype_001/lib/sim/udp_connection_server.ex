@@ -7,6 +7,10 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     GenServer.call(__MODULE__, :hello_world)
   end
 
+  def sim_ready? do
+    GenServer.call(__MODULE__, :get_sim_ready)
+  end
+
   def send_actuator_data(agent_id, data) do
     GenServer.call(__MODULE__, {:send_actuator_data, agent_id, data})
   end
@@ -23,22 +27,32 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     receive_port = Keyword.fetch!(opts, :receive_port)
     {:ok, socket} = :gen_udp.open(receive_port, [:binary, active: true, reuseaddr: true])
     Logger.info("UDP server listening on port #{receive_port}")
-    {:ok, %{socket: socket, receive_port: receive_port, send_ip: send_ip, send_port: send_port}}
+    {:ok, %{socket: socket, receive_port: receive_port, send_ip: send_ip, send_port: send_port, sim_ready: false}}
   end
 
   @impl true
   def handle_info({:udp, _socket, ip, port, data}, state) do
     client_string = "#{:inet.ntoa(ip)}:#{port}"
-    case Jason.decode(data) do
+    new_state = case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->
         Logger.info("Received '#{method}' request from #{client_string} with params: #{inspect(params)}")
-        handle_rpc_call(method, params, state)
+        case handle_rpc_call(method, params, state) do
+          {:noreply, updated_state} -> updated_state
+          _ -> state
+        end
       {:ok, _} ->
         Logger.info("Invalid JSON-RPC request from #{client_string}: #{inspect(data)}")
+        state
       {:error, _} ->
         Logger.info("Bad packet received from #{client_string}")
+        state
     end
-    {:noreply, state}
+    {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_call(:get_sim_ready, _from, state) do
+    {:reply, state.sim_ready, state}
   end
 
   @impl true
@@ -73,6 +87,16 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   # Private functions
+  defp handle_rpc_call("sim_ready", params, state) do
+    Logger.info("Sim ready!!: #{inspect(params)}")
+    {:noreply, %{state | sim_ready: true}}
+  end
+
+  defp handle_rpc_call("sim_stopping", params, state) do
+    Logger.info("Sim stopping!!: #{inspect(params)}")
+    {:noreply, %{state | sim_ready: false}}
+  end
+
   defp handle_rpc_call("agent_created", %{"id" => agent_id} = params, state) do
     Logger.info("Agent created: #{inspect(params)}")
     case GenePrototyp0001.Onta.OntosSupervisor.start_ontos(agent_id, params) do
