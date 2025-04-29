@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "maze-simulation-environment"
+		},
+		{
+			"path": "gene-management-ui"
 		}
 	],
 	"settings": {}
