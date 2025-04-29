@@ -15,7 +15,9 @@ defmodule GenePrototype0001.Application do
         receive_port: 7400,
         send_ip: "127.0.0.1",
         send_port: 7401
-      ]}
+      ]},
+      # Bandit HTTP server
+      {Bandit, plug: GenePrototype0001.Bandit.Router, port: Application.get_env(:bandit, :port, 4000)}
     ]
 
     opts = [strategy: :one_for_one, name: GenePrototype0001.Supervisor]

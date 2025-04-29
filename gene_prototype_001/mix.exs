@@ -23,7 +23,8 @@ defmodule GenePrototype0001.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
-      {:nx, "~> 0.9.2"}
+      {:nx, "~> 0.9.2"},
+      {:bandit, "~> 1.6"}
     ]
   end
 end

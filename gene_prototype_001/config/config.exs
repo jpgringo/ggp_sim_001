@@ -15,3 +15,7 @@ config :logger,
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
+
+# Bandit server configuration; 4000 is alreay the Bandit default
+config :bandit,
+  port: 4000
