@@ -25,3 +25,11 @@ gene_prototype_0001-*.tar
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# IDE specific files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
