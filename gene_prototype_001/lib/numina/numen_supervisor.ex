@@ -7,7 +7,7 @@ defmodule GenePrototype0001.Numina.NumenSupervisor do
 
   def start_numen(supervisor, numen_module, agent_id) do
     # Get the Ontos pid from the registry
-    ontos_pid = case Registry.lookup(GenePrototype0001.OntosRegistry, agent_id) do
+    ontos_pid = case Registry.lookup(GenePrototyp0001.Onta.OntosRegistry, agent_id) do
       [{pid, _}] -> pid
       _ -> nil
     end

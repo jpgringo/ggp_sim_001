@@ -5,11 +5,11 @@ defmodule GenePrototype0001.Application do
   def start(_type, _args) do
     children = [
       # Registry for Ontos instances
-      {Registry, keys: :unique, name: GenePrototype0001.OntosRegistry},
+      {Registry, keys: :unique, name: GenePrototyp0001.Onta.OntosRegistry},
       # Registry for Numina instances
       {Registry, keys: :unique, name: GenePrototype0001.Registry},
       # Dynamic supervisor for Ontos instances
-      {GenePrototype0001.OntosSupervisor, []},
+      {GenePrototyp0001.Onta.OntosSupervisor, []},
       # External connection supervisor
       {GenePrototype0001.ExternalConnectionSupervisor, [
         receive_port: 7400,
