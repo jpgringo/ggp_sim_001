@@ -1,4 +1,4 @@
-defmodule GenePrototype0001.UdpConnectionServer do
+defmodule GenePrototype0001.Sim.UdpConnectionServer do
   use GenServer
   require Logger
 

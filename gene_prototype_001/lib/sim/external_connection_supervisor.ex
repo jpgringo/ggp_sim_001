@@ -1,4 +1,4 @@
-defmodule GenePrototype0001.ExternalConnectionSupervisor do
+defmodule GenePrototype0001.Sim.ExternalConnectionSupervisor do
   use Supervisor
   require Logger
 
@@ -11,7 +11,7 @@ defmodule GenePrototype0001.ExternalConnectionSupervisor do
     Logger.info("Starting external connection supervisor...")
     receive_port = Keyword.get(opts, :receive_port, 7400)
     children = [
-      {GenePrototype0001.UdpConnectionServer, receive_port: receive_port}
+      {GenePrototype0001.Sim.UdpConnectionServer, receive_port: receive_port}
     ]
     Supervisor.init(children, strategy: :one_for_one)
   end

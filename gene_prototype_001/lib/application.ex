@@ -11,7 +11,7 @@ defmodule GenePrototype0001.Application do
       # Dynamic supervisor for Ontos instances
       {GenePrototyp0001.Onta.OntosSupervisor, []},
       # External connection supervisor
-      {GenePrototype0001.ExternalConnectionSupervisor, [
+      {GenePrototype0001.Sim.ExternalConnectionSupervisor, [
         receive_port: 7400,
         send_ip: "127.0.0.1",
         send_port: 7401

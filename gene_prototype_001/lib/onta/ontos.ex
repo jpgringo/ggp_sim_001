@@ -109,7 +109,7 @@ defmodule GenePrototyp0001.Onta.Ontos do
     Enum.each(commands, fn command ->
       case command do
         {:actuator_data, payload} ->
-          GenePrototype0001.UdpConnectionServer.send_actuator_data(
+          GenePrototype0001.Sim.UdpConnectionServer.send_actuator_data(
             state.agent_id,
             payload
           )
