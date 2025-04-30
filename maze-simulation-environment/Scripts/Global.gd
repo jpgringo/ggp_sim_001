@@ -1,6 +1,6 @@
 extends Node
 
-var maze_scene = preload("res://Scenes/maze.tscn")
+var maze_scene
 var turtle_scene = preload("res://Scenes/turtle.tscn")
 
 # communication consts/vars
@@ -86,7 +86,16 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 				node.actuator_input(data)
 			else:
 				print("Warning: Could not find turtle with ID %d or turtle lacks actuator_input method" % agent_id)
-
+	else: if method == "start_sim":
+		var player_count = params.get("player_count", 1)
+		call_deferred("_spawn_players_main_thread", turtle_scene, player_count)
+		
 func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)
 	udp_transmitter.put_packet(JSON.stringify(msg).to_utf8_buffer())
+
+func _spawn_players_main_thread(scene, player_count):
+	if maze_scene and maze_scene.is_inside_tree():
+		maze_scene.spawn_players(scene, player_count)
+	else:
+		print("Maze is not in the scene tree")

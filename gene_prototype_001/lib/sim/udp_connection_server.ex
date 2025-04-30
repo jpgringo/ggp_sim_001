@@ -3,8 +3,8 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   require Logger
 
   # Client API
-  def hello_world do
-    GenServer.call(__MODULE__, :hello_world)
+  def send_command(command, params) when is_binary(command) do
+    GenServer.cast(__MODULE__, {:send_command, command, params})
   end
 
   def sim_ready? do
@@ -78,6 +78,17 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     })
     :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_cast({:send_command, command, params}, state = %{socket: socket, send_ip: send_ip, send_port: send_port}) do
+    notification = Jason.encode!(%{
+      "jsonrpc" => "2.0",
+      "method" => command,
+      "params" => params
+    })
+    :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
+    {:noreply, state}
   end
 
   @impl true

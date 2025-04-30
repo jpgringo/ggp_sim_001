@@ -16,9 +16,12 @@ var previous_velocity = Vector2.ZERO
 var is_remote_controlled = false  # Track remote control state
 
 func _ready():
+	print("Turtle created!!")
 	# Transmit agent creation message
 	Global.transmit("agent_created", {"id": self.get_instance_id(), "actuators": 1})
 	
+	transmit_velocity_reading()
+
 	# Setup velocity heartbeat timer
 	heartbeat_timer = Timer.new()
 	heartbeat_timer.name = "VelocityHeartbeatTimer"
@@ -129,3 +132,8 @@ func transmit_collision_event(collision):
 		"agent": self.get_instance_id(),
 		"data": [TOUCH_SENSOR_ID, PackedFloat32Array([0.0, 0.0, 0.0, 0.0])]
 	})
+
+# inside player.gd
+func _post_add_debug():
+	print("NOW in tree?", is_inside_tree())
+	print("NOW Visible:", visible)

@@ -18,4 +18,9 @@ config :logger, :console,
 
 # Bandit server configuration; 4000 is alreay the Bandit default
 config :bandit,
-  port: 4000
+  port: 4000,
+    # Reduce connection pool size
+  thousand_island: [
+    pool_size: 4,  # Default is 100
+    max_connections: 16  # Default is 16384
+  ]

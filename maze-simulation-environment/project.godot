@@ -22,6 +22,8 @@ Global="*res://Scripts/Global.gd"
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
+window/size/initial_position_type=0
+window/size/initial_position=Vector2i(360, 240)
 window/stretch/mode="canvas_items"
 window/stretch/scale=4.0
 

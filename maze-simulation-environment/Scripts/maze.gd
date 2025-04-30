@@ -20,8 +20,8 @@ const UNBREAKABLE_TILE_LAYER = 2
 var rng = RandomNumberGenerator.new()
 
 func _ready():
+	Global.maze_scene = self
 	create_maze()
-	spawn_players(Global.turtle_scene,1)
 
 func create_maze():
 	generate_unbreakables()
@@ -36,7 +36,10 @@ func generate_unbreakables():
 
 
 func spawn_players(player_scene, instance_count = 1):
+	print("Maze is spawning:", player_scene)
 	rng.randomize()
+	print("spawned_players tree root:", spawned_players.get_tree().root)
+	print("Does root have Window class?", spawned_players.get_tree().root is Window)
 	var spawn_points = [
 		Vector2i(1, 1 + map_offset),
 		Vector2i(map_width - 2, 1 + map_offset),
@@ -55,6 +58,13 @@ func spawn_players(player_scene, instance_count = 1):
 			#is_spawnpoint_taken(spawn_coords):
 			var player = player_scene.instantiate()
 			player.global_position = tilemap.map_to_local(spawn_coords)
+			print("Player already has a parent:", player.get_parent())
 			spawned_players.add_child(player)
+			player.call_deferred("_post_add_debug")
 			players_in_level.append(player)
+			print("Instantiated player:", player)
+			print("spawned player Is inside tree:", spawned_players.is_inside_tree())
+			print("player Is inside tree:", player.is_inside_tree())
+			print("Spawning at:", player.global_position)
+			print("Visible:", player.visible)
 			spawned = true
