@@ -26,9 +26,23 @@ a {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  place-items: flex-start;
+  justify-content: stretch;
   min-width: 320px;
   min-height: 100vh;
+}
+
+header {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+
+  h1 {
+    font-size: 1.5rem;
+    margin: 0;
+  }
 }
 
 h1 {
@@ -66,4 +80,34 @@ button {
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+
+.system-status {
+  display: flex;
+  flex-flow: row nowrap;
+
+  .component-status {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin: 0 0 0 1em;
+
+    &:after {
+      content: '';
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      background-color: red;
+      border-radius: 50%;
+      margin: 0 0 0 0.5em;
+    }
+
+    &.ok:after {
+      background-color: green;
+    }
+  }
 }

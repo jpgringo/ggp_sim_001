@@ -31,7 +31,8 @@ onUnmounted(() => {
 
 <template>
   <div class="system-status">
-    {{ status }}
+    <span class="component-status" :class="{ 'ok': status.server }">server</span>
+    <span class="component-status" :class="{ 'ok': status.sim }">sim</span>
   </div>
 </template>
 
