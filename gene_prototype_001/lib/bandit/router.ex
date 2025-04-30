@@ -1,8 +1,22 @@
+defmodule GenePrototype0001.Bandit.SelectiveLogger do
+  def init(opts), do: opts
+
+  def call(conn, _opts) do
+    if conn.request_path == "/api/status" do
+      conn
+    else
+      Plug.Logger.call(conn, [])
+    end
+  end
+end
+
 defmodule GenePrototype0001.Bandit.Router do
   use Plug.Router
 
+  # Don't log /api/status requests to avoid log flooding from polling
+  plug GenePrototype0001.Bandit.SelectiveLogger
+
   plug :match
-  plug Plug.Logger
   plug :dispatch
 
   get "/api/status" do
