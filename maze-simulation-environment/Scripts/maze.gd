@@ -19,12 +19,23 @@ const UNBREAKABLE_TILE_LAYER = 2
 
 var rng = RandomNumberGenerator.new()
 
+class DrawerRect:
+	extends Node2D
+	var size: Vector2
+
+	func _ready():
+		queue_redraw()
+
+	func _draw():
+		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 0, 0, 0.5))
+
 func _ready():
 	Global.maze_scene = self
 	create_maze()
-
+	
 func create_maze():
 	generate_unbreakables()
+	create_target()
 
 func generate_unbreakables():
 	#--------------------------------- Unbreakables ------------------------------
@@ -33,6 +44,26 @@ func generate_unbreakables():
 		for y in range(map_height):
 			if x == 0 or x == map_width - 1 or y == 0 or y == map_height - 1:
 				unbreakable_layer.set_cell(Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
+				
+func create_target():
+	var area = Area2D.new()
+	var shape = RectangleShape2D.new()
+	shape.extents = Vector2(32,32)
+
+	var collision = CollisionShape2D.new()
+	collision.shape = shape
+	area.add_child(collision)
+
+	var target = Node2D.new()
+	target.set_script(preload("res://Scripts/maze_target.gd"))
+	target.size = shape.extents * 2
+	target.color = Color(0.33, 1, 0.5, 0.75)
+	target.position = -shape.extents
+	area.add_child(target)
+
+	area.position = Vector2(150, 100)
+	area.body_entered.connect(_on_body_entered)
+	add_child(area)
 
 
 func spawn_players(player_scene, instance_count = 1):
@@ -74,3 +105,8 @@ func stop_simulation():
 	# Remove and destroy all spawned players
 	for player in spawned_players.get_children():
 		player.queue_free()
+
+func _on_body_entered(body):
+	print("**** BODY ENTERED ****:", body.name)
+	body.queue_free()
+	Global.transmit("reached_target", {"agent": body.get_instance_id()})
