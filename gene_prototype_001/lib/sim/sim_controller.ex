@@ -18,6 +18,11 @@ defmodule GenePrototype0001.Sim.SimController do
     GenePrototype0001.Sim.UdpConnectionServer.send_command("start_sim", %{player_count: player_count})
   end
 
+  def stop_sim() do
+    Logger.debug("Stopping simulator...")
+    GenePrototype0001.Sim.UdpConnectionServer.send_command("stop_sim", [])
+  end
+
   def start_sim() do
     Logger.debug("Would start simulator...")
     GenePrototype0001.Sim.UdpConnectionServer.send_command("start_sim", %{player_count: 1})

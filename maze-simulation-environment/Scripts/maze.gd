@@ -68,3 +68,9 @@ func spawn_players(player_scene, instance_count = 1):
 			print("Spawning at:", player.global_position)
 			print("Visible:", player.visible)
 			spawned = true
+
+func stop_simulation():
+	print("******STOPPING SIMULATION******")
+	# Remove and destroy all spawned players
+	for player in spawned_players.get_children():
+		player.queue_free()

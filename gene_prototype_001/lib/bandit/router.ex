@@ -39,6 +39,13 @@ defmodule GenePrototype0001.Bandit.Router do
     send_resp(conn, 200, "OK")
   end
 
+  patch "/api/simulation/stop" do
+    # {:ok, body, conn} = read_body(conn)
+    # {:ok, params} = Jason.decode(body)
+     GenePrototype0001.Sim.SimController.stop_sim
+    send_resp(conn, 200, "OK")
+  end
+
   match _ do
     send_resp(conn, 404, "Not Found")
   end

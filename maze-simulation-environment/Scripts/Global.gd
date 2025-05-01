@@ -89,6 +89,8 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 	else: if method == "start_sim":
 		var player_count = params.get("player_count", 1)
 		call_deferred("_spawn_players_main_thread", turtle_scene, player_count)
+	else: if method == "stop_sim":
+		call_deferred("_stop_simulation_main_thread")
 		
 func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)
@@ -97,5 +99,11 @@ func transmit(method: String, data: Variant):
 func _spawn_players_main_thread(scene, player_count):
 	if maze_scene and maze_scene.is_inside_tree():
 		maze_scene.spawn_players(scene, player_count)
+	else:
+		print("Maze is not in the scene tree")
+		
+func _stop_simulation_main_thread():
+	if maze_scene and maze_scene.is_inside_tree():
+		maze_scene.stop_simulation()
 	else:
 		print("Maze is not in the scene tree")
