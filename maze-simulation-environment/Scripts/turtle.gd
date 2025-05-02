@@ -51,8 +51,8 @@ func _physics_process(_delta):
 	var collision = move_and_collide(velocity * _delta)
 	
 	if collision:
-		print("Collision with:", collision.get_collider())
-		print("Collision normal:", collision.get_normal())
+		#print("Collision with:", collision.get_collider())
+		#print("Collision normal:", collision.get_normal())
 		transmit_collision_event(collision)
 
 func update_animation(input_direction: Vector2):
@@ -89,19 +89,16 @@ func transmit_velocity_reading():
 	})
 	
 func actuator_input(data: Array):
-	print("========== ACTUATOR INPUT START ===========")
-	print("Turtle %d received actuator data: %s" % [self.get_instance_id(), str(data)])
-	print("Current meta list: %s" % str(get_meta_list()))
+	#print("Turtle %d received actuator data: %s" % [self.get_instance_id(), str(data)])
 	if data.size() >= 2:
 		var actuator_id = data[0]
 		var values = data[1]
-		print("Actuator ID: %d, Values: %s" % [actuator_id, str(values)])
+		#print("Actuator ID: %d, Values: %s" % [actuator_id, str(values)])
 		
 		# Handle movement actuator
 		if actuator_id == 0 and values is Array and values.size() >= 2:
 			# Mark this turtle as being controlled remotely
 			self.is_remote_controlled = true
-			print("Turtle %d is now remotely controlled: %s" % [self.get_instance_id(), self.is_remote_controlled])
 			
 			var motion = Vector2(values[0], values[1])
 			
@@ -124,7 +121,7 @@ func transmit_collision_event(collision):
 		"agent": self.get_instance_id(),
 		"data": [TOUCH_SENSOR_ID, PackedFloat32Array([to_local(collision.get_position()).x, to_local(collision.get_position()).y, collision.get_normal().x, collision.get_normal().y])]
 	}
-	print("collision data:", data)
+	#print("collision data:", data)
 	Global.transmit("sensor_data", data)
 	
 	# Immediately send a reset message to clear the collision state
@@ -132,8 +129,3 @@ func transmit_collision_event(collision):
 		"agent": self.get_instance_id(),
 		"data": [TOUCH_SENSOR_ID, PackedFloat32Array([0.0, 0.0, 0.0, 0.0])]
 	})
-
-# inside player.gd
-func _post_add_debug():
-	print("NOW in tree?", is_inside_tree())
-	print("NOW Visible:", visible)

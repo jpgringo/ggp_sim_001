@@ -62,7 +62,7 @@ func _listen_loop(_userdata : Variant = null):
 			else:
 				message = str(packet)
 
-			print("UDP Receiver - received from %s:%d -> %s" % [sender_ip, sender_port, message])
+			#print("UDP Receiver - received from %s:%d -> %s" % [sender_ip, sender_port, message])
 
 			# Handle JSON-RPC
 			var parsed = JSON.parse_string(message)
@@ -75,7 +75,7 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 	var params = msg.get("params", null)
 	var id = msg.get("id", null)
 
-	print("JSON-RPC Method: %s, Params: %s, ID: %s" % [method, str(params), str(id)])
+	#print("JSON-RPC Method: %s, Params: %s, ID: %s" % [method, str(params), str(id)])
 
 	if method == "actuator_data" and params is Dictionary:
 		var agent_id = params.get("agent")
@@ -84,8 +84,8 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 			var node = instance_from_id(agent_id)
 			if node and node.has_method("actuator_input"):
 				node.actuator_input(data)
-			else:
-				print("Warning: Could not find turtle with ID %d or turtle lacks actuator_input method" % agent_id)
+			#else:
+				#print("Warning: Could not find turtle with ID %d or turtle lacks actuator_input method" % agent_id)
 	else: if method == "start_sim":
 		var player_count = params.get("player_count", 1)
 		call_deferred("_spawn_players_main_thread", turtle_scene, player_count)

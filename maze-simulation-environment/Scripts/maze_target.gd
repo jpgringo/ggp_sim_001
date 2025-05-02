@@ -5,8 +5,8 @@ var color: Color
 func _ready():
 	queue_redraw()
 
-
 func _draw():
+	print("DRAWING TARGET")
 	draw_rect(Rect2(Vector2.ZERO, size), color)
 
 func _on_body_entered(body):

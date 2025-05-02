@@ -37,7 +37,6 @@ func _load_maze() -> Variant:
 	if file:
 		var content = file.get_as_text()
 		var data = JSON.parse_string(content)
-		print(data)
 		return data
 	else:
 		return null
@@ -101,6 +100,7 @@ func create_spawn_points():
 	spawn_points.clear()
 	for pos in grid_spawn_points:
 		var world_pos = grid_to_world(pos)
+		print("spawn point", world_pos)
 		spawn_points.append(world_pos)
 		_draw_spawn_point(pos)
 
@@ -119,12 +119,11 @@ func generate_maze_walls():
 				var cell_index = y * maze_def.width + x
 				if cell_index < maze_def.data.size() and maze_def.data[cell_index] > 0:
 					unbreakable_layer.set_cell(Vector2i(x+1, y+1 + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
-					#print("%d: x=%d, y=%d -> %d" % [cell_index, x, y, maze_def.data[cell_index]])
 	
 func create_target():
 	var area = Area2D.new()
 	var shape = RectangleShape2D.new()
-	shape.extents = Vector2(32,32)
+	shape.extents = Vector2(4,4)
 
 	var collision = CollisionShape2D.new()
 	collision.shape = shape
@@ -136,8 +135,13 @@ func create_target():
 	target.color = Color(0.33, 1, 0.5, 0.75)
 	target.position = -shape.extents
 	area.add_child(target)
-
-	area.position = Vector2(150, 100)
+	
+	var target_position = grid_to_world(Vector2(GRID_COLUMNS/2, GRID_ROWS/2))
+	print("TARGET POSITION:", target_position)
+	if maze_def is Dictionary:
+		target_position = grid_to_world(Vector2(maze_def.target[0]+1,maze_def.target[1]+1))
+	
+	area.position = target_position
 	area.body_entered.connect(_on_body_entered)
 	add_child(area)
 
