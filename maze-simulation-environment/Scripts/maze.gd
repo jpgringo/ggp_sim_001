@@ -4,6 +4,8 @@ extends Node2D
 @onready var unbreakable_layer = $TileMap/UNBREAKABLE_TILE
 @onready var spawned_players = $SpawnedPlayers
 
+var maze_def = null
+
 # Desired grid dimensions
 const GRID_COLUMNS = 30  # desired number of columns
 const GRID_ROWS = 20     # desired number of rows
@@ -22,22 +24,23 @@ const UNBREAKABLE_TILE_LAYER = 2
 
 var rng = RandomNumberGenerator.new()
 
-class DrawerRect:
-	extends Node2D
-	var size: Vector2
-
-	func _ready():
-		queue_redraw()
-
-	func _draw():
-		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 0, 0, 0.5))
-
 func _ready():
 	Global.maze_scene = self
+	maze_def = _load_maze()
 	calculate_dimensions()
 	create_maze()
 	# Connect to handle window resizing
 	get_tree().root.size_changed.connect(self._on_viewport_resized)
+	
+func _load_maze() -> Variant:
+	var file = FileAccess.open("res://Maps/map_0000.json", FileAccess.READ)
+	if file:
+		var content = file.get_as_text()
+		var data = JSON.parse_string(content)
+		print(data)
+		return data
+	else:
+		return null
 
 func _on_viewport_resized():
 	calculate_dimensions()
@@ -45,15 +48,15 @@ func _on_viewport_resized():
 
 # Calculate maze dimensions and scaling
 func calculate_dimensions():
-	map_width = GRID_COLUMNS
-	map_height = GRID_ROWS
+	map_width = maze_def.width + 2 if maze_def is Dictionary else GRID_COLUMNS
+	map_height = maze_def.height +2 if maze_def is Dictionary else GRID_ROWS
 	
 	var viewport_size = get_viewport_rect().size
 	var base_tile_size = tilemap.tile_set.tile_size
 	
 	# Calculate scale factors for both dimensions
-	var scale_x = viewport_size.x / (base_tile_size.x * GRID_COLUMNS)
-	var scale_y = viewport_size.y / (base_tile_size.y * GRID_ROWS)
+	var scale_x = viewport_size.x / (base_tile_size.x * map_width)
+	var scale_y = viewport_size.y / (base_tile_size.y * map_height)
 	
 	# Use the smaller scale to maintain aspect ratio
 	grid_scale = min(scale_x, scale_y)
@@ -67,8 +70,8 @@ func calculate_dimensions():
 func position_grid():
 	var viewport_size = get_viewport_rect().size
 	var grid_pixel_size = Vector2(
-		tilemap.tile_set.tile_size.x * GRID_COLUMNS * grid_scale,
-		tilemap.tile_set.tile_size.y * GRID_ROWS * grid_scale
+		tilemap.tile_set.tile_size.x * map_width * grid_scale,
+		tilemap.tile_set.tile_size.y * map_height * grid_scale
 	)
 	
 	# Calculate padding to center the grid
@@ -80,6 +83,7 @@ var spawn_points: Array[Vector2] = []
 
 func create_maze():
 	generate_perimeter()
+	generate_maze_walls()
 	create_spawn_points()
 	create_target()
 
@@ -88,9 +92,9 @@ func create_spawn_points():
 	# Define spawn points in grid coordinates (first empty cell in each corner)
 	var grid_spawn_points = [
 		Vector2i(1, 1),                    # Top Left
-		Vector2i(GRID_COLUMNS - 2, 1),      # Top Right
-		Vector2i(1, GRID_ROWS - 2),         # Bottom Left
-		Vector2i(GRID_COLUMNS - 2, GRID_ROWS - 2)  # Bottom Right
+		Vector2i(map_width - 2, 1),      # Top Right
+		Vector2i(1, map_height - 2),         # Bottom Left
+		Vector2i(map_width - 2, map_height - 2)  # Bottom Right
 	]
 	
 	# Convert grid positions to world coordinates and visualize them
@@ -108,6 +112,15 @@ func generate_perimeter():
 			if x == 0 or x == map_width - 1 or y == 0 or y == map_height - 1:
 				unbreakable_layer.set_cell(Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
 				
+func generate_maze_walls():
+	if maze_def is Dictionary:
+		for y in range(maze_def.height):
+			for x in range(maze_def.width):
+				var cell_index = y * maze_def.width + x
+				if cell_index < maze_def.data.size() and maze_def.data[cell_index] > 0:
+					unbreakable_layer.set_cell(Vector2i(x+1, y+1 + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
+					#print("%d: x=%d, y=%d -> %d" % [cell_index, x, y, maze_def.data[cell_index]])
+	
 func create_target():
 	var area = Area2D.new()
 	var shape = RectangleShape2D.new()

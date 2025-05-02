@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=4 uid="uid://t2qgl1riqywd"]
+[gd_scene load_steps=3 format=3 uid="uid://t2qgl1riqywd"]
 
 [ext_resource type="TileSet" uid="uid://bojjrhgvhci8i" path="res://Resources/maze_tile_set.tres" id="1_31kh1"]
 [ext_resource type="Script" uid="uid://cjv0g5lkw8wk2" path="res://Scripts/maze.gd" id="1_aiyge"]
@@ -12,7 +12,6 @@ format = 2
 
 [node name="BACKGROUND_TILE" type="TileMapLayer" parent="TileMap"]
 use_parent_material = true
-tile_map_data = PackedByteArray("AAAOAAkAAgABAAAAAAAOAAoAAgABAAEAAAAOAAwAAgABAAEAAAAOAA0AAgABAAAAAAAPAAkAAgAAAAAAAAAPAAoAAgAAAAEAAAAPAAwAAgAAAAEAAAAPAA0AAgAAAAAAAAARAAkAAgAAAAAAAAARAAoAAgAAAAEAAAASAAkAAgABAAAAAAASAAoAAgABAAEAAAARAAwAAgAAAAEAAAASAAwAAgABAAEAAAARAA0AAgAAAAAAAAASAA0AAgABAAAAAAA=")
 tile_set = ExtResource("1_31kh1")
 navigation_enabled = false
 
