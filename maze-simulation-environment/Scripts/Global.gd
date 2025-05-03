@@ -23,7 +23,8 @@ func _ready():
 	print("Global.gd has loaded")
 	start_receiver()
 	start_transmitter()
-	transmit("sim_ready", [0,1,2,3])
+	var maps_list = get_maps_list()
+	transmit("sim_ready", {"scenarios": maps_list})
 	
 func _exit_tree():
 	transmit("sim_stopping", [])
@@ -32,7 +33,23 @@ func _exit_tree():
 		print("Shutting down receiver...")
 		receiver_thread.wait_to_finish()
 		udp_receiver.close()
+		
+func get_maps_list() -> PackedStringArray:
+	var maps_path = "res://Maps"
+	var dir := DirAccess.open(maps_path)
+	var files := PackedStringArray()
+	var pattern := RegEx.new()
+	pattern.compile("^map_\\d+\\.json$")  # escape backslashes properly
 
+	if dir:
+		for file in dir.get_files():
+			if pattern.search(file):
+				files.append(file)
+	else:
+		push_error("Failed to open directory: %s" % maps_path)
+
+	return files			
+	
 func start_receiver():
 	udp_receiver = PacketPeerUDP.new()
 	var result : int = udp_receiver.bind(LOCAL_PORT)

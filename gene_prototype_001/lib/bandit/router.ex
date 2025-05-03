@@ -22,10 +22,21 @@ defmodule GenePrototype0001.Bandit.Router do
 
   get "/api/status" do
     sim_ready = GenePrototype0001.Sim.UdpConnectionServer.sim_ready?()
-    response = Jason.encode!(%{
-      "server" => true,
-      "sim" => sim_ready
-    })
+    response = case sim_ready do
+      true ->
+        {:ok, sim_state} = GenServer.call(:SimController, :current_sim_state)
+        Jason.encode!(%{
+          "server" => true,
+          "sim" => %{"ready" => true,
+          "scenarios" => sim_state.scenarios }
+        })
+      false ->
+        Jason.encode!(%{
+          "server" => true,
+          "sim" => %{"ready" => false,
+          "scenarios" => [] }
+        })
+    end
 
     conn
     |> put_resp_content_type("application/json")

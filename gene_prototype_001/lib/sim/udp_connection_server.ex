@@ -100,6 +100,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   # Private functions
   defp handle_rpc_call("sim_ready", params, state) do
     Logger.info("Sim ready!!: #{inspect(params)}")
+    GenServer.cast(:SimController, {:sim_ready, params})
     {:noreply, %{state | sim_ready: true}}
   end
 
