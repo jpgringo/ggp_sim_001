@@ -109,9 +109,9 @@ defmodule GenePrototyp0001.Onta.Ontos do
     Enum.each(commands, fn command ->
       case command do
         {:actuator_data, payload} ->
-          GenePrototype0001.Sim.UdpConnectionServer.send_actuator_data(
+          GenServer.call(:SimUdpConnector, {:send_actuator_data,
             state.agent_id,
-            payload
+            payload}
           )
           Logger.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
         _ ->

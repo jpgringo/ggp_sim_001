@@ -21,7 +21,7 @@ defmodule GenePrototype0001.Bandit.Router do
   plug :dispatch
 
   get "/api/status" do
-    sim_ready = GenePrototype0001.Sim.UdpConnectionServer.sim_ready?()
+    sim_ready = GenServer.call(:SimUdpConnector, :sim_ready?)
     response = case sim_ready do
       true ->
         {:ok, sim_state} = GenServer.call(:SimController, :current_sim_state)
@@ -46,14 +46,12 @@ defmodule GenePrototype0001.Bandit.Router do
   post "/api/simulation" do
     {:ok, body, conn} = read_body(conn)
     {:ok, params} = Jason.decode(body)
-    GenePrototype0001.Sim.SimController.start_sim(params["agents"])
+    GenServer.call(:SimController, {:start_sim, params})
     send_resp(conn, 200, "OK")
   end
 
   patch "/api/simulation/stop" do
-    # {:ok, body, conn} = read_body(conn)
-    # {:ok, params} = Jason.decode(body)
-     GenePrototype0001.Sim.SimController.stop_sim
+    GenServer.call(:SimController, :stop_sim)
     send_resp(conn, 200, "OK")
   end
 

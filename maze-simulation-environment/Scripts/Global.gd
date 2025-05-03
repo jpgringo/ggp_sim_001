@@ -104,7 +104,7 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 			#else:
 				#print("Warning: Could not find turtle with ID %d or turtle lacks actuator_input method" % agent_id)
 	else: if method == "start_sim":
-		var player_count = params.get("player_count", 1)
+		var player_count = params.get("agents", 1)
 		call_deferred("_spawn_players_main_thread", turtle_scene, player_count)
 	else: if method == "stop_sim":
 		call_deferred("_stop_simulation_main_thread")

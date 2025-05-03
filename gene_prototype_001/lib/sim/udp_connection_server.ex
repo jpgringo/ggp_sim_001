@@ -2,22 +2,9 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   use GenServer
   require Logger
 
-  # Client API
-  def send_command(command, params) when is_binary(command) do
-    GenServer.cast(__MODULE__, {:send_command, command, params})
-  end
-
-  def sim_ready? do
-    GenServer.call(__MODULE__, :get_sim_ready)
-  end
-
-  def send_actuator_data(agent_id, data) do
-    GenServer.call(__MODULE__, {:send_actuator_data, agent_id, data})
-  end
-
   def start_link(opts) do
     Logger.info("Starting UDP server...")
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+    GenServer.start_link(__MODULE__, opts, name: :SimUdpConnector)
   end
 
   @impl true
@@ -51,19 +38,8 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   @impl true
-  def handle_call(:get_sim_ready, _from, state) do
+  def handle_call(:sim_ready?, _from, state) do
     {:reply, state.sim_ready, state}
-  end
-
-  @impl true
-  def handle_call(:hello_world, _from, state = %{socket: socket, send_ip: send_ip, send_port: send_port}) do
-    notification = Jason.encode!(%{
-      "jsonrpc" => "2.0",
-      "method" => "message",
-      "params" => ["hello from Elixir!", "turtle_01", 3, [-5, 2.2, 0, 0, -1.8, 4, 0]]
-    })
-    :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
-    {:reply, "Hello from UDP server!", state}
   end
 
   @impl true
@@ -81,14 +57,14 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   @impl true
-  def handle_cast({:send_command, command, params}, state = %{socket: socket, send_ip: send_ip, send_port: send_port}) do
+  def handle_call({:send_command, command, params}, _from, state = %{socket: socket, send_ip: send_ip, send_port: send_port}) do
     notification = Jason.encode!(%{
       "jsonrpc" => "2.0",
       "method" => command,
       "params" => params
     })
     :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
-    {:noreply, state}
+    {:reply, :ok, state}
   end
 
   @impl true
