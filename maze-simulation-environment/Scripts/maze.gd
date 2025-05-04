@@ -1,10 +1,12 @@
 extends Node2D
 
 @onready var tilemap = $TileMap
-@onready var unbreakable_layer = $TileMap/UNBREAKABLE_TILE
+@onready var perimeter_layer = $TileMap/UNBREAKABLE_TILE
+@onready var maze_wall_layer = $TileMap/BREAKABLE_TILE
 @onready var spawned_players = $SpawnedPlayers
 
 var maze_def = null
+var target_area = null  # Reference to the target Area2D
 
 # Desired grid dimensions
 const GRID_COLUMNS = 30  # desired number of columns
@@ -24,22 +26,35 @@ const UNBREAKABLE_TILE_LAYER = 2
 
 var rng = RandomNumberGenerator.new()
 
+const NULL_MAP = {
+	"id": -1,
+	"width": 9,
+	"height": 5,
+	"spawn_points": [],
+	"target": [],
+	"data": []
+}
+
 func _ready():
 	Global.maze_scene = self
-	maze_def = _load_maze()
+	maze_def = _load_maze(null)
 	calculate_dimensions()
 	create_maze()
 	# Connect to handle window resizing
 	get_tree().root.size_changed.connect(self._on_viewport_resized)
 	
-func _load_maze() -> Variant:
-	var file = FileAccess.open("res://Maps/map_0000.json", FileAccess.READ)
-	if file:
-		var content = file.get_as_text()
-		var data = JSON.parse_string(content)
-		return data
+func _load_maze(maze_id) -> Variant:
+	print("loading maze %s..." % maze_id)
+	if maze_id != null:
+		var file = FileAccess.open("res://Maps/%s" % maze_id, FileAccess.READ)
+		print("file:", file)
+		if file:
+			var content = file.get_as_text()
+			return JSON.parse_string(content)
+		else:
+			return NULL_MAP
 	else:
-		return null
+		return NULL_MAP
 
 func _on_viewport_resized():
 	calculate_dimensions()
@@ -79,12 +94,14 @@ func position_grid():
 	
 # Store spawn points at class level so they're accessible to spawn_players
 var spawn_points: Array[Vector2] = []
+var spawn_point_markers: Array[Node] = []  # Store references to visual markers
 
 func create_maze():
 	generate_perimeter()
 	generate_maze_walls()
 	create_spawn_points()
-	create_target()
+	if maze_def is Dictionary and maze_def.target.size() == 2:
+		create_target()
 
 # Create and visualize spawn points
 func create_spawn_points():
@@ -110,7 +127,7 @@ func generate_perimeter():
 	for x in range(map_width):
 		for y in range(map_height):
 			if x == 0 or x == map_width - 1 or y == 0 or y == map_height - 1:
-				unbreakable_layer.set_cell(Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
+				perimeter_layer.set_cell(Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
 				
 func generate_maze_walls():
 	if maze_def is Dictionary:
@@ -118,7 +135,7 @@ func generate_maze_walls():
 			for x in range(maze_def.width):
 				var cell_index = y * maze_def.width + x
 				if cell_index < maze_def.data.size() and maze_def.data[cell_index] > 0:
-					unbreakable_layer.set_cell(Vector2i(x+1, y+1 + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
+					maze_wall_layer.set_cell(Vector2i(x+1, y+1 + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
 	
 func create_target():
 	var area = Area2D.new()
@@ -138,12 +155,12 @@ func create_target():
 	
 	var target_position = grid_to_world(Vector2(GRID_COLUMNS/2, GRID_ROWS/2))
 	print("TARGET POSITION:", target_position)
-	if maze_def is Dictionary:
-		target_position = grid_to_world(Vector2(maze_def.target[0]+1,maze_def.target[1]+1))
+	target_position = grid_to_world(Vector2(maze_def.target[0]+1,maze_def.target[1]+1))
 	
 	area.position = target_position
 	area.body_entered.connect(_on_body_entered)
 	add_child(area)
+	target_area = area  # Store reference to target
 
 
 # Convert grid coordinates to world coordinates
@@ -170,6 +187,7 @@ func _draw_spawn_point(grid_pos: Vector2i):
 	marker.color = Color(1, 0, 0, 0.5)  # Semi-transparent red
 	marker.z_index = 100  # Ensure it's visible above everything
 	add_child(marker)
+	spawn_point_markers.append(marker)  # Store reference to the marker
 
 func spawn_players(player_scene, instance_count = 1):
 	rng.randomize()
@@ -194,11 +212,40 @@ func spawn_players(player_scene, instance_count = 1):
 			player.call_deferred("_post_add_debug")
 			players_in_level.append(player)
 			spawned = true
-
-func stop_simulation():
+			
+func start_simulation(agent_scene, scenario, player_count):
+	print("will start simulation with scenario %s" % scenario)
+	stop_simulation(true)
+	maze_def = _load_maze(scenario)
+	calculate_dimensions()
+	create_maze()
+	spawn_players(agent_scene, player_count)
+	
+func stop_simulation(remove_perimeter = false):
 	# Remove and destroy all spawned players
 	for player in spawned_players.get_children():
 		player.queue_free()
+	clear_scenario(remove_perimeter)
+	
+
+func clear_scenario(remove_perimeter = false):
+	# Clear all tiles from the maze wall layer
+	maze_wall_layer.clear()
+	
+	# Remove the target if it exists
+	if target_area:
+		target_area.queue_free()
+		target_area = null
+	
+	# Remove spawn point visual markers and clear arrays
+	for marker in spawn_point_markers:
+		marker.queue_free()
+	spawn_point_markers.clear()
+	spawn_points.clear()
+
+	if remove_perimeter:
+		perimeter_layer.clear()
+		
 
 func _on_body_entered(body):
 	body.queue_free()
