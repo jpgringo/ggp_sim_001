@@ -117,8 +117,37 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, state}
   end
 
+  defp handle_rpc_call("batch", batch, state) do
+    Logger.info("received batch: #{inspect(batch)}")
+    group_by_agent(batch)
+    |> Enum.each(fn entry ->
+      case Registry.lookup(GenePrototyp0001.Onta.OntosRegistry, entry["agent"]) do
+        [{_pid, _}] ->
+          GenServer.cast(_pid, {:sensor_batch, entry["events"]})
+        [] ->
+          Logger.warning("Received sensor data for unknown agent #{entry["agent"]}")
+      end
+    end)
+    {:noreply, state}
+  end
+
   defp handle_rpc_call(method, _params, state) do
     Logger.warning("Unknown method received: #{inspect(method)}")
     {:noreply, state}
+  end
+
+  def group_by_agent(batch) do
+    batch
+      |> Enum.group_by(fn entry -> entry["agent"] end)
+      |> Enum.map(fn {agent, entries} ->
+        %{
+          "agent" => agent,
+          "events" => Enum.map(entries, fn entry -> entry["data"] end)
+        }
+      end)
+      |> Enum.sort_by(fn %{"agent" => agent} ->
+        # Keep first occurrence order of each agent
+        Enum.find_index(batch, fn x -> x["agent"] == agent end)
+      end)
   end
 end

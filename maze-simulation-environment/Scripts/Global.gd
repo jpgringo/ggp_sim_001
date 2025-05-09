@@ -21,12 +21,11 @@ var player
 var maps_list = []
 
 func _ready():
-	print("Global.gd has loaded")
 	start_receiver()
 	start_transmitter()
 	maps_list = get_maps_list()
 	transmit("sim_ready", {"scenarios": maps_list})
-	
+
 func _exit_tree():
 	transmit("sim_stopping", [])
 	running = false
@@ -34,7 +33,7 @@ func _exit_tree():
 		print("Shutting down receiver...")
 		receiver_thread.wait_to_finish()
 		udp_receiver.close()
-		
+
 func get_maps_list() -> PackedStringArray:
 	var maps_path = "res://Maps"
 	var dir := DirAccess.open(maps_path)
@@ -49,8 +48,8 @@ func get_maps_list() -> PackedStringArray:
 	else:
 		push_error("Failed to open directory: %s" % maps_path)
 
-	return files			
-	
+	return files
+
 func start_receiver():
 	udp_receiver = PacketPeerUDP.new()
 	var result : int = udp_receiver.bind(LOCAL_PORT)
@@ -61,11 +60,11 @@ func start_receiver():
 	receiver_thread = Thread.new()
 	receiver_thread.start(self._listen_loop)
 	print("Receiver listening on port %d" % [LOCAL_PORT])
-	
+
 func start_transmitter():
 	udp_transmitter = PacketPeerUDP.new()
 	udp_transmitter.set_dest_address(DEST_IP, DEST_PORT)
-	
+
 
 func _listen_loop(_userdata : Variant = null):
 	while running:
@@ -96,6 +95,7 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 	#print("JSON-RPC Method: %s, Params: %s, ID: %s" % [method, str(params), str(id)])
 
 	if method == "actuator_data" and params is Dictionary:
+		print("handling actuator_data:", params)
 		var agent_id = params.get("agent")
 		var data = params.get("data")
 		if agent_id != null and data != null:
@@ -110,7 +110,7 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 		call_deferred("_start_simulation_main_thread", turtle_scene, scenario, player_count)
 	else: if method == "stop_sim":
 		call_deferred("_stop_simulation_main_thread")
-		
+
 func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)
 	udp_transmitter.put_packet(JSON.stringify(msg).to_utf8_buffer())
@@ -120,7 +120,7 @@ func _start_simulation_main_thread(agent_scene, scenario, player_count):
 		maze_scene.start_simulation(agent_scene, scenario, player_count)
 	else:
 		print("Maze is not in the scene tree")
-		
+
 func _stop_simulation_main_thread():
 	if maze_scene and maze_scene.is_inside_tree():
 		maze_scene.stop_simulation()

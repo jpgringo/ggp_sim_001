@@ -29,6 +29,7 @@ defmodule GenePrototype0001.Numina.BasicMotionNumen do
 
     Logger.debug("BasicMotionNumen #{state.agent_id} velocity sensor values: #{inspect(velocity_sensor)}; touch sensor values: #{inspect(touch_sensor)}")
 
+    process_sensor_data(velocity_sensor, touch_sensor, state)
     # First check touch sensor - if any non-zero values, stop immediately
     case touch_sensor do
       {:ok, values} ->
@@ -45,10 +46,69 @@ defmodule GenePrototype0001.Numina.BasicMotionNumen do
     end
   end
 
+  @impl true
+  def sensor_data_updated_new(sensor_data, state) do
+    Logger.debug("SENSOR_DATA_UPDATED_NEW - sensor data: #{inspect(sensor_data)}")
+    velocity_sensor = get_sensor_values_new(sensor_data, 0)
+    touch_sensor = get_sensor_values_new(sensor_data, 1)
+
+    Logger.debug("BasicMotionNumen #{state.agent_id} velocity sensor values: #{inspect(velocity_sensor)}; touch sensor values: #{inspect(touch_sensor)}")
+
+    # First check touch sensor - if any non-zero values, stop immediately
+    case touch_sensor do
+      {:ok, values} ->
+        Logger.debug("BasicMotionNumen #{state.agent_id} touch sensor values: #{inspect(values)}")
+        if Enum.any?(values, fn v -> abs(v) > 0.001 end) do
+          Logger.info("BasicMotionNumen #{state.agent_id} detected collision, stopping")
+          {:ok, state, [{:actuator_data, [0, [0.0, 0.0]]}]}
+        else
+          handle_velocity(velocity_sensor, state)
+        end
+      :not_found ->
+        # No touch sensor data, proceed with velocity handling
+        handle_velocity(velocity_sensor, state)
+    end
+
+  end
+
+    defp process_sensor_data(velocity_sensor, touch_sensor, state) when velocity_sensor == {:ok, [0.0, 0.0]} do
+    handle_velocity(velocity_sensor, state)
+  end
+
+  defp process_sensor_data(velocity_sensor, :not_found, state) do
+    handle_velocity(velocity_sensor, state)
+  end
+
+
+  defp process_sensor_data(velocity_sensor, touch_sensor, state) do
+    case touch_sensor do
+      {:ok, values} ->
+        Logger.debug("BasicMotionNumen #{state.agent_id} touch sensor values: #{inspect(values)}")
+        if Enum.any?(values, fn v -> abs(v) > 0.001 end) do
+          Logger.info("BasicMotionNumen #{state.agent_id} detected collision, stopping")
+          # clear collision date
+          Logger.debug("state: #{inspect(state)}")
+          {:ok, state, [{:actuator_data, [0, [0.0, 0.0]]}]}
+        else
+          handle_velocity(velocity_sensor, state)
+        end
+      :not_found ->
+        # No touch sensor data, proceed with velocity handling
+        handle_velocity(velocity_sensor, state)
+    end
+  end
+
   # Helper to safely get sensor values from the list of tuples
   defp get_sensor_values(sensor_data, target_sensor_id) do
     case Enum.find(sensor_data, fn {id, _} -> id == target_sensor_id end) do
       {_id, values} -> {:ok, values}
+      nil -> :not_found
+    end
+  end
+
+  defp get_sensor_values_new(sensor_data, target_sensor_id) do
+    case Enum.find(sensor_data, fn [id, values] -> id == target_sensor_id end) do
+      [_, values] -> {:ok, values}
       nil -> :not_found
     end
   end

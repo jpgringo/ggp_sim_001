@@ -88,6 +88,70 @@ defmodule GenePrototyp0001.Onta.Ontos do
     end
   end
 
+
+  @impl true
+  def process_incoming_sensor_set(sensor_data_set, state) do
+    # TODO: if local state updates happen at all, they should happen separately from the processing
+
+    # Notify all Numina
+    Enum.each(state.numen_pids, fn pid ->
+      GenServer.cast(pid, {:process_sensor_data_set, sensor_data_set})
+    end)
+
+#    Logger.debug("Ontos #{state.agent_id} received sensor data: #{inspect([sensor_id, values])}")
+
+    {:noreply, :ok, state}
+  end
+
+
+  # there is an asynchronous version below
+  @impl true
+  def process_incoming_sensor_datum([sensor_id, values], state) do
+    # Store sensor data
+    new_state = update_sensor_data(state, sensor_id, values)
+
+    # Get current sensor data and notify all Numina
+    data = get_all_sensor_data(new_state.sensor_table)
+    Enum.each(new_state.numen_pids, fn pid ->
+      GenServer.cast(pid, {:process_sensor_data, data})
+    end)
+
+    Logger.debug("Ontos #{state.agent_id} received sensor data: #{inspect([sensor_id, values])}")
+    {:noreply, :ok, new_state}
+  end
+
+
+
+  #  @impl true
+#  def handle_cast({:sensor_batch, [sensor_datum]}, state) do
+#    Logger.debug("Ontos received sensor batch with a SINGLE datum: #{inspect(sensor_datum)}")
+#    {:noreply, state}
+#  end
+
+  @impl true
+  def handle_cast({:sensor_batch, sensor_data_list}, state) do
+    Logger.debug("Ontos received sensor batch: #{inspect(sensor_data_list)}")
+    preprocessed_input = preprocess_data_batch(sensor_data_list)
+    Logger.debug("PREPROCESSED sensor batch: #{inspect(preprocessed_input)}")
+
+    process_incoming_sensor_set(preprocessed_input, state)
+
+    # [
+    #   [0, [-82.0504150390625, 57.1640548706055]],
+    #   [0, [55.0231323242188, 83.501220703125]],
+    #   [1, [0.0071563720703125, 13.0091857910156, 0.0, -1.0]], [0, [55.0231323242188, 83.501220703125]]]
+
+#    sensor_data_list
+#    |> Enum.each(fn sensor_datum ->
+#      Logger.debug("\tindividual datum: #{inspect(sensor_datum)}")
+#      # use the synchronous version to retain receipt order
+#      process_incoming_sensor_datum(sensor_datum, state)
+#    end)
+
+    {:noreply, state}
+  end
+
+  # there is a synchronous version above
   @impl true
   def handle_cast({:sensor_data, [sensor_id, values]}, state) do
     # Store sensor data
@@ -147,5 +211,28 @@ defmodule GenePrototyp0001.Onta.Ontos do
   # Get all sensor data from ETS
   defp get_all_sensor_data(table) do
     :ets.tab2list(table)
+  end
+
+  def preprocess_data_batch(sensor_data_list) do
+    # bin the data by sensor id
+    grouped_data = sensor_data_list |> Enum.group_by(fn [id, _] -> id end)
+    IO.puts("grouped_data: #{inspect(grouped_data)}")
+    # average each sensor; this is just one way to summarize a batch. It may be more relevant
+    # to grab the most recent entry for each sensor only (but ultimately for the algorithm to
+    # decide? Should this functionality evolve also?)
+    vector_set = Enum.map(grouped_data, fn {sensor_id, vals} ->
+      # we're effectively discarding the individual sensor_id value from each input,
+      # but given the way we grouped the data above, we can trust the map key as the input sensor id
+      [sensor_id,
+         vals
+           # grab just the values from each input
+           |> Enum.map(fn [_, vector] -> vector end)
+           # 'pivot' the vector collection so all each column is grouped together
+           |> Enum.zip_with(& &1)
+           # get the average of each  pivoted column
+           |> Enum.map(&(Enum.sum(&1) / length(&1)))
+      ]
+    end)
+    vector_set
   end
 end

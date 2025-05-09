@@ -35,19 +35,26 @@ const NULL_MAP = {
 	"data": []
 }
 
+var event_queue = []
+var batch_timer: Timer
+
 func _ready():
 	Global.maze_scene = self
 	maze_def = _load_maze(null)
 	calculate_dimensions()
 	create_maze()
+	batch_timer = Timer.new()
+	batch_timer.name = "VelocityHeartbeatTimer"
+	add_child(batch_timer)
+	batch_timer.wait_time = 0.1
+	batch_timer.connect("timeout", _transmit_event_batch)
+
 	# Connect to handle window resizing
 	get_tree().root.size_changed.connect(self._on_viewport_resized)
-	
+
 func _load_maze(maze_id) -> Variant:
-	print("loading maze %s..." % maze_id)
 	if maze_id != null:
 		var file = FileAccess.open("res://Maps/%s" % maze_id, FileAccess.READ)
-		print("file:", file)
 		if file:
 			var content = file.get_as_text()
 			return JSON.parse_string(content)
@@ -64,20 +71,20 @@ func _on_viewport_resized():
 func calculate_dimensions():
 	map_width = maze_def.width + 2 if maze_def is Dictionary else GRID_COLUMNS
 	map_height = maze_def.height +2 if maze_def is Dictionary else GRID_ROWS
-	
+
 	var viewport_size = get_viewport_rect().size
 	var base_tile_size = tilemap.tile_set.tile_size
-	
+
 	# Calculate scale factors for both dimensions
 	var scale_x = viewport_size.x / (base_tile_size.x * map_width)
 	var scale_y = viewport_size.y / (base_tile_size.y * map_height)
-	
+
 	# Use the smaller scale to maintain aspect ratio
 	grid_scale = min(scale_x, scale_y)
-	
+
 	# Apply scale to tilemap
 	tilemap.scale = Vector2(grid_scale, grid_scale)
-	
+
 	# Center the grid
 	position_grid()
 
@@ -87,11 +94,11 @@ func position_grid():
 		tilemap.tile_set.tile_size.x * map_width * grid_scale,
 		tilemap.tile_set.tile_size.y * map_height * grid_scale
 	)
-	
+
 	# Calculate padding to center the grid
 	var padding = (viewport_size - grid_pixel_size) / 2
 	tilemap.position = padding
-	
+
 # Store spawn points at class level so they're accessible to spawn_players
 var spawn_points: Array[Vector2] = []
 var spawn_point_markers: Array[Node] = []  # Store references to visual markers
@@ -112,12 +119,11 @@ func create_spawn_points():
 		Vector2i(1, map_height - 2),         # Bottom Left
 		Vector2i(map_width - 2, map_height - 2)  # Bottom Right
 	]
-	
+
 	# Convert grid positions to world coordinates and visualize them
 	spawn_points.clear()
 	for pos in grid_spawn_points:
 		var world_pos = grid_to_world(pos)
-		print("spawn point", world_pos)
 		spawn_points.append(world_pos)
 		_draw_spawn_point(pos)
 
@@ -127,16 +133,16 @@ func generate_perimeter():
 	for x in range(map_width):
 		for y in range(map_height):
 			if x == 0 or x == map_width - 1 or y == 0 or y == map_height - 1:
-				perimeter_layer.set_cell(Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
-				
+				perimeter_layer.set_cell(Vector2i(x, y + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)
+
 func generate_maze_walls():
 	if maze_def is Dictionary:
 		for y in range(maze_def.height):
 			for x in range(maze_def.width):
 				var cell_index = y * maze_def.width + x
 				if cell_index < maze_def.data.size() and maze_def.data[cell_index] > 0:
-					maze_wall_layer.set_cell(Vector2i(x+1, y+1 + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)	
-	
+					maze_wall_layer.set_cell(Vector2i(x+1, y+1 + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)
+
 func create_target():
 	var area = Area2D.new()
 	var shape = RectangleShape2D.new()
@@ -152,11 +158,10 @@ func create_target():
 	target.color = Color(0.33, 1, 0.5, 0.75)
 	target.position = -shape.extents
 	area.add_child(target)
-	
+
 	var target_position = grid_to_world(Vector2(GRID_COLUMNS/2, GRID_ROWS/2))
-	print("TARGET POSITION:", target_position)
 	target_position = grid_to_world(Vector2(maze_def.target[0]+1,maze_def.target[1]+1))
-	
+
 	area.position = target_position
 	area.body_entered.connect(_on_body_entered)
 	add_child(area)
@@ -171,11 +176,11 @@ func grid_to_world(grid_pos: Vector2i, center_in_cell: bool = true) -> Vector2:
 		grid_pos.x * tile_size.x,
 		grid_pos.y * tile_size.y
 	)
-	
+
 	# Apply centering if needed
 	if center_in_cell:
 		local_pos += Vector2(tile_size.x / 2.0, tile_size.y / 2.0)
-	
+
 	# Convert to world coordinates
 	return tilemap.to_global(local_pos)
 
@@ -193,7 +198,7 @@ func spawn_players(player_scene, instance_count = 1):
 	rng.randomize()
 	# Ensure tilemap is at z-index 0 and players will be above
 	tilemap.z_index = 0
-	
+
 	# Create a local copy of spawn points that we can modify
 	var available_spawn_points = spawn_points.duplicate()
 	var players_in_level = []
@@ -207,12 +212,12 @@ func spawn_players(player_scene, instance_count = 1):
 			#if is_valid_spawnpoint(spawn_coords) and not
 			#is_spawnpoint_taken(spawn_coords):
 			var player = player_scene.instantiate()
+			player.event_handler = Callable(self, "_handle_event")
 			player.global_position = spawn_coords
 			spawned_players.add_child(player)
-			player.call_deferred("_post_add_debug")
 			players_in_level.append(player)
 			spawned = true
-			
+
 func start_simulation(agent_scene, scenario, player_count):
 	print("will start simulation with scenario %s" % scenario)
 	stop_simulation(true)
@@ -220,23 +225,25 @@ func start_simulation(agent_scene, scenario, player_count):
 	calculate_dimensions()
 	create_maze()
 	spawn_players(agent_scene, player_count)
-	
+	batch_timer.start()
+
 func stop_simulation(remove_perimeter = false):
 	# Remove and destroy all spawned players
 	for player in spawned_players.get_children():
 		player.queue_free()
 	clear_scenario(remove_perimeter)
-	
+	batch_timer.stop()
+
 
 func clear_scenario(remove_perimeter = false):
 	# Clear all tiles from the maze wall layer
 	maze_wall_layer.clear()
-	
+
 	# Remove the target if it exists
 	if target_area:
 		target_area.queue_free()
 		target_area = null
-	
+
 	# Remove spawn point visual markers and clear arrays
 	for marker in spawn_point_markers:
 		marker.queue_free()
@@ -245,8 +252,16 @@ func clear_scenario(remove_perimeter = false):
 
 	if remove_perimeter:
 		perimeter_layer.clear()
-		
+
 
 func _on_body_entered(body):
 	body.queue_free()
 	Global.transmit("reached_target", {"agent": body.get_instance_id()})
+
+func _handle_event(event):
+	event_queue.push_back(event)
+
+func _transmit_event_batch():
+	print("will transmit batch with %d messages" % event_queue.size(), event_queue)
+	Global.transmit("batch", event_queue)
+	event_queue.clear()

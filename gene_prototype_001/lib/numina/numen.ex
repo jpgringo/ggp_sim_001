@@ -14,6 +14,10 @@ defmodule GenePrototype0001.Numina.Numen do
               {:ok, new_state :: term()} |
               {:ok, new_state :: term(), commands :: list()}
 
+  @callback sensor_data_updated_new(sensor_data :: Nx.Tensor.t(), state :: term()) ::
+              {:ok, new_state :: term()} |
+              {:ok, new_state :: term(), commands :: list()}
+
   @callback handle_custom(msg :: term(), state :: term()) ::
               {:noreply, new_state :: term()} | {:stop, reason :: term(), new_state :: term()}
 
@@ -41,6 +45,21 @@ defmodule GenePrototype0001.Numina.Numen do
             send(state.ontos_pid, {:numen_commands, commands})
             {:noreply, new_state}
         end
+      end
+
+      # Default callback for processing sensor data sets
+      @impl true
+      def handle_cast({:process_sensor_data_set, sensor_data}, state) do
+        IO.puts("------------ SENSOR DATA SET PROCESSING NOT IMPLEMENTED! ----------------")
+        case sensor_data_updated_new(sensor_data, state) do
+          {:ok, new_state, []} ->
+            {:noreply, new_state}
+          {:ok, new_state, commands} when is_list(commands) ->
+            # Send commands back to the Ontos
+            send(state.ontos_pid, {:numen_commands, commands})
+            {:noreply, new_state}
+        end
+        {:noreply, state}
       end
     end
   end
