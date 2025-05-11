@@ -122,12 +122,6 @@ defmodule GenePrototyp0001.Onta.Ontos do
 
 
 
-  #  @impl true
-#  def handle_cast({:sensor_batch, [sensor_datum]}, state) do
-#    Logger.debug("Ontos received sensor batch with a SINGLE datum: #{inspect(sensor_datum)}")
-#    {:noreply, state}
-#  end
-
   @impl true
   def handle_cast({:sensor_batch, sensor_data_list}, state) do
     Logger.debug("Ontos received sensor batch: #{inspect(sensor_data_list)}")
@@ -135,18 +129,6 @@ defmodule GenePrototyp0001.Onta.Ontos do
     Logger.debug("PREPROCESSED sensor batch: #{inspect(preprocessed_input)}")
 
     process_incoming_sensor_set(preprocessed_input, state)
-
-    # [
-    #   [0, [-82.0504150390625, 57.1640548706055]],
-    #   [0, [55.0231323242188, 83.501220703125]],
-    #   [1, [0.0071563720703125, 13.0091857910156, 0.0, -1.0]], [0, [55.0231323242188, 83.501220703125]]]
-
-#    sensor_data_list
-#    |> Enum.each(fn sensor_datum ->
-#      Logger.debug("\tindividual datum: #{inspect(sensor_datum)}")
-#      # use the synchronous version to retain receipt order
-#      process_incoming_sensor_datum(sensor_datum, state)
-#    end)
 
     {:noreply, state}
   end

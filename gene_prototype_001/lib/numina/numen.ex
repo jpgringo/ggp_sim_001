@@ -50,7 +50,6 @@ defmodule GenePrototype0001.Numina.Numen do
       # Default callback for processing sensor data sets
       @impl true
       def handle_cast({:process_sensor_data_set, sensor_data}, state) do
-        IO.puts("------------ SENSOR DATA SET PROCESSING NOT IMPLEMENTED! ----------------")
         case sensor_data_updated_new(sensor_data, state) do
           {:ok, new_state, []} ->
             {:noreply, new_state}

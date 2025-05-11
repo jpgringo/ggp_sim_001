@@ -46,8 +46,12 @@ defmodule GenePrototype0001.Bandit.Router do
   post "/api/simulation" do
     {:ok, body, conn} = read_body(conn)
     {:ok, params} = Jason.decode(body)
-    GenServer.call(:SimController, {:start_sim, params})
-    send_resp(conn, 200, "OK")
+    case GenServer.call(:SimController, {:start_sim, params}) do
+      :ok -> send_resp(conn, 200, "OK")
+      {:error, :simulation_in_progress} -> send_resp(conn, 409, "Simulation in progress")
+      resp -> send_resp(conn, 500, Jason.stringify(resp))
+    end
+
   end
 
   patch "/api/simulation/stop" do
