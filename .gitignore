@@ -26,6 +26,9 @@ gene_prototype_0001-*.tar
 .godot/
 /android/
 
+# Vite cach
+.vite
+
 # IDE specific files
 .idea/
 *.iml
