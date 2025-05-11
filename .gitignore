@@ -35,4 +35,5 @@ gene_prototype_0001-*.tar
 .vscode/
 *.swp
 *.swo
+*.code-workspace
 
