@@ -8,6 +8,8 @@ defmodule GenePrototype0001.Application do
       {Registry, keys: :unique, name: GenePrototyp0001.Onta.OntosRegistry},
       # Registry for Numina instances
       {Registry, keys: :unique, name: GenePrototype0001.Registry},
+      # Registry for WebSocket connections
+      {Registry, keys: :duplicate, name: SimulationSocketRegistry},
       # Dynamic supervisor for Ontos instances
       {GenePrototyp0001.Onta.OntosSupervisor, []},
       # External connection supervisor

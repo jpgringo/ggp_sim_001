@@ -119,6 +119,10 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   defp handle_rpc_call("batch", batch, state) do
     Logger.info("received batch: #{inspect(batch)}")
+
+    # Forward batch to WebSocket clients
+    GenePrototype0001.SimulationSocket.broadcast_batch(batch)
+
     group_by_agent(batch)
     |> Enum.each(fn entry ->
       case Registry.lookup(GenePrototyp0001.Onta.OntosRegistry, entry["agent"]) do

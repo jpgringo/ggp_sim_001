@@ -47,11 +47,24 @@ defmodule GenePrototype0001.Bandit.Router do
     {:ok, body, conn} = read_body(conn)
     {:ok, params} = Jason.decode(body)
     case GenServer.call(:SimController, {:start_sim, params}) do
-      :ok -> send_resp(conn, 200, "OK")
+      :ok ->
+        conn
+        |> put_resp_header("x-simulation-ws", "/ws/simulation")
+        |> send_resp(200, "OK")
       {:error, :simulation_in_progress} -> send_resp(conn, 409, "Simulation in progress")
       resp -> send_resp(conn, 500, Jason.stringify(resp))
     end
+  end
 
+  get "/ws/simulation" do
+    case conn.method do
+      "GET" ->
+        conn
+        |> WebSockAdapter.upgrade(GenePrototype0001.SimulationSocket, [], timeout: 60_000)
+        |> halt()
+      _ ->
+        send_resp(conn, 400, "Bad Request")
+    end
   end
 
   patch "/api/simulation/stop" do
