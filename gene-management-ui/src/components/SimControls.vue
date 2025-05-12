@@ -21,8 +21,18 @@ const agentsInput = ref(null);
 const simStore = useSimStore();
 const currentScenario = ref(simStore.scenarios[0]);
 
+const props = defineProps({
+  onStartSim: {
+    type: Function,
+    required: false
+  }
+});
+
+
 const handleStart = () => {
-  api_connector.startSim({ agents: parseInt(agentsInput.value.value), scenario: currentScenario.value });
+  if (props.onStartSim) {
+    props.onStartSim({agents: parseInt(agentsInput.value.value), scenario: currentScenario.value});
+  }
 };
 
 const handleStop = () => {

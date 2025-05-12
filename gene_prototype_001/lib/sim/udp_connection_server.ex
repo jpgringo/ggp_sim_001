@@ -82,6 +82,10 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   defp handle_rpc_call("sim_stopping", params, state) do
     Logger.info("Sim stopping!!: #{inspect(params)}")
+    # Forward batch to WebSocket clients
+    GenServer.cast(:SimController, {:sim_stopped, params})
+    GenePrototype0001.SimulationSocket.broadcast_stop(params)
+
     {:noreply, %{state | sim_ready: false}}
   end
 
@@ -134,6 +138,16 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     end)
     {:noreply, state}
   end
+
+  defp handle_rpc_call("scenario_stopped", params, state) do
+    Logger.info("Sim stopping!!: #{inspect(params)}")
+    # Forward batch to WebSocket clients
+    GenePrototype0001.SimulationSocket.broadcast_stop(params)
+
+    {:noreply, %{state | sim_ready: true}}
+  end
+
+
 
   defp handle_rpc_call(method, _params, state) do
     Logger.warning("Unknown method received: #{inspect(method)}")

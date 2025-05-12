@@ -7,6 +7,7 @@ extends Node2D
 
 var maze_def = null
 var target_area = null  # Reference to the target Area2D
+var current_scenario = ""
 
 # Desired grid dimensions
 const GRID_COLUMNS = 30  # desired number of columns
@@ -66,6 +67,10 @@ func _load_maze(maze_id) -> Variant:
 func _on_viewport_resized():
 	calculate_dimensions()
 	position_grid()
+	
+func _exit_tree():
+	print("Maze is terminating!!")
+	Global.transmit("terminating", "maze")
 
 # Calculate maze dimensions and scaling
 func calculate_dimensions():
@@ -218,21 +223,26 @@ func spawn_players(player_scene, instance_count = 1):
 			players_in_level.append(player)
 			spawned = true
 
-func start_simulation(agent_scene, scenario, player_count):
-	print("will start simulation with scenario %s" % scenario)
-	stop_simulation(true)
+func start_scenario(agent_scene, scenario, player_count):
+	print("will start scenario %s" % scenario)
+	stop_scenario(true, false)
+	current_scenario = scenario
 	maze_def = _load_maze(scenario)
 	calculate_dimensions()
 	create_maze()
 	spawn_players(agent_scene, player_count)
 	batch_timer.start()
 
-func stop_simulation(remove_perimeter = false):
+func stop_scenario(remove_perimeter = false, broadcast = true):
+	print("will stop scenario %s" % current_scenario)
 	# Remove and destroy all spawned players
 	for player in spawned_players.get_children():
 		player.queue_free()
 	clear_scenario(remove_perimeter)
 	batch_timer.stop()
+	if broadcast:
+		Global.transmit("scenario_stopped", {"scenario": current_scenario})
+	current_scenario = ""
 
 
 func clear_scenario(remove_perimeter = false):

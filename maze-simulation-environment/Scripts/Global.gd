@@ -27,6 +27,7 @@ func _ready():
 	transmit("sim_ready", {"scenarios": maps_list})
 
 func _exit_tree():
+	print("EXITING TREE!!")
 	transmit("sim_stopping", [])
 	running = false
 	if receiver_thread and receiver_thread.is_alive():
@@ -104,25 +105,25 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 				node.actuator_input(data)
 			#else:
 				#print("Warning: Could not find turtle with ID %d or turtle lacks actuator_input method" % agent_id)
-	else: if method == "start_sim":
+	else: if method == "start_scenario":
 		var scenario = params.get("scenario")
 		var player_count = params.get("agents", 1)
-		call_deferred("_start_simulation_main_thread", turtle_scene, scenario, player_count)
-	else: if method == "stop_sim":
-		call_deferred("_stop_simulation_main_thread")
+		call_deferred("_start_scenario_main_thread", turtle_scene, scenario, player_count)
+	else: if method == "stop_scenario":
+		call_deferred("_stop_scenario_main_thread")
 
 func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)
 	udp_transmitter.put_packet(JSON.stringify(msg).to_utf8_buffer())
 
-func _start_simulation_main_thread(agent_scene, scenario, player_count):
+func _start_scenario_main_thread(agent_scene, scenario, player_count):
 	if maze_scene and maze_scene.is_inside_tree():
-		maze_scene.start_simulation(agent_scene, scenario, player_count)
+		maze_scene.start_scenario(agent_scene, scenario, player_count)
 	else:
 		print("Maze is not in the scene tree")
 
-func _stop_simulation_main_thread():
+func _stop_scenario_main_thread():
 	if maze_scene and maze_scene.is_inside_tree():
-		maze_scene.stop_simulation()
+		maze_scene.stop_scenario()
 	else:
 		print("Maze is not in the scene tree")

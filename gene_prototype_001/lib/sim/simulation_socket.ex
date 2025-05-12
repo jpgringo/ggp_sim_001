@@ -12,6 +12,16 @@ defmodule GenePrototype0001.SimulationSocket do
     end)
   end
 
+  def broadcast_stop(params) do
+    Registry.dispatch(SimulationSocketRegistry, "simulation", fn entries ->
+      Logger.debug("BROADCASTING STOP!!")
+      message = Jason.encode!(%{type: "stop", data: params})
+      for {pid, _} <- entries do
+        Process.send(pid, {:send_message, message}, [])
+      end
+    end)
+  end
+
   @impl WebSock
   def init(_args) do
     Logger.info("WebSocket connection established")

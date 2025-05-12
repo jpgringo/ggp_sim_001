@@ -10,7 +10,7 @@ defmodule GenePrototype0001.Sim.SimController do
 
   def init(_opts) do
     Logger.info("starting sim controller...")
-    {:ok, %{simulation_in_progress: false, scenarios: []}}
+    {:ok, %{simulator_running: false, scenarios: [], scenario_in_progress: false}}
   end
 
   def handle_call(:current_sim_state, _from, state) do
@@ -18,19 +18,19 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   @impl true
-  def handle_call({:start_sim, params}, _from, %{simulation_in_progress: true} = state) do
-    {:reply, {:error, :simulation_in_progress}, state}
+  def handle_call({:start_sim, params}, _from, %{scenario_in_progress: true} = state) do
+    {:reply, {:error, :scenario_in_progress}, state}
   end
 
   def handle_call({:start_sim, params}, _from, state) do
-    GenServer.call(:SimUdpConnector, {:send_command, "start_sim", params})
-    {:reply, :ok, %{state | simulation_in_progress: true}}
+    GenServer.call(:SimUdpConnector, {:send_command, "start_scenario", params})
+    {:reply, :ok, %{state | simulator_running: true, scenario_in_progress: true}}
   end
 
   @impl true
-  def handle_call(:stop_sim, _from, state) do
-    GenServer.call(:SimUdpConnector, {:send_command, "stop_sim", nil})
-    {:reply, :ok, %{state | simulation_in_progress: false}}
+  def handle_call(:stop_scenario, _from, state) do
+    GenServer.call(:SimUdpConnector, {:send_command, "stop_scenario", nil})
+    {:reply, :ok, %{state | simulator_running: false, scenario_in_progress: false}}
   end
 
   def handle_call(_msg, _from, state) do
@@ -38,8 +38,13 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   def handle_cast({:sim_ready, %{"scenarios" => scenarios}}, state) do
-    Logger.debug("SimController - adding scenarios to state")
-    {:noreply, %{state | scenarios: scenarios}}
+    Logger.debug("SimController - marking as LIVE and adding scenarios to state")
+    {:noreply, %{state | simulator_running: true, scenarios: scenarios}}
+  end
+
+  def handle_cast({:sim_stopped, _params}, state) do
+    Logger.debug("SimController - marking as STOPPED")
+    {:noreply, %{state | simulator_running: false}}
   end
 
   def handle_cast(_msg, state) do
