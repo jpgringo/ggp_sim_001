@@ -222,6 +222,7 @@ func spawn_players(player_scene, instance_count = 1):
 			spawned_players.add_child(player)
 			players_in_level.append(player)
 			spawned = true
+	return players_in_level
 
 func start_scenario(agent_scene, scenario, player_count):
 	print("will start scenario %s" % scenario)
@@ -230,7 +231,9 @@ func start_scenario(agent_scene, scenario, player_count):
 	maze_def = _load_maze(scenario)
 	calculate_dimensions()
 	create_maze()
-	spawn_players(agent_scene, player_count)
+	var new_players = spawn_players(agent_scene, player_count)
+	var player_ids = new_players.map(func(player): return str(player.get_instance_id()))
+	Global.transmit("scenario_started", {"scenario": scenario, "player_ids": player_ids})
 	batch_timer.start()
 
 func stop_scenario(remove_perimeter = false, broadcast = true):

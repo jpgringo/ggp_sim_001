@@ -91,7 +91,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   defp handle_rpc_call("agent_created", %{"id" => agent_id} = params, state) do
     Logger.info("Agent created: #{inspect(params)}")
-    case GenePrototyp0001.Onta.OntosSupervisor.start_ontos(agent_id, params) do
+    case GenePrototype0001.Onta.OntosSupervisor.start_ontos(agent_id, params) do
       {:ok, pid} ->
         Logger.info("Started Ontos for agent #{agent_id} with pid #{inspect(pid)}")
       {:error, reason} ->
@@ -101,10 +101,10 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   defp handle_rpc_call("agent_destroyed", %{"id" => agent_id}, state) do
-    case Registry.lookup(GenePrototyp0001.Onta.OntosRegistry, agent_id) do
+    case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
       [{pid, _}] ->
         Logger.info("Terminating Ontos for agent #{agent_id}")
-        GenePrototyp0001.Onta.OntosSupervisor.terminate_ontos(pid)
+        GenePrototype0001.Onta.OntosSupervisor.terminate_ontos(pid)
       [] ->
         Logger.warning("No Ontos found for agent #{agent_id}")
     end
@@ -112,9 +112,9 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   defp handle_rpc_call("sensor_data", %{"agent" => agent_id, "data" => data}, state) do
-    case Registry.lookup(GenePrototyp0001.Onta.OntosRegistry, agent_id) do
+    case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
       [{_pid, _}] ->
-        GenePrototyp0001.Onta.Ontos.handle_sensor_data(agent_id, data)
+        GenePrototype0001.Onta.Ontos.handle_sensor_data(agent_id, data)
       [] ->
         Logger.warning("Received sensor data for unknown agent #{agent_id}")
     end
@@ -129,7 +129,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
     group_by_agent(batch)
     |> Enum.each(fn entry ->
-      case Registry.lookup(GenePrototyp0001.Onta.OntosRegistry, entry["agent"]) do
+      case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, entry["agent"]) do
         [{_pid, _}] ->
           GenServer.cast(_pid, {:sensor_batch, entry["events"]})
         [] ->

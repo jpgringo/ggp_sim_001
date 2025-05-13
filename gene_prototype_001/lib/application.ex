@@ -4,14 +4,18 @@ defmodule GenePrototype0001.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      # Registry for Scenario instances
+      {Registry, keys: :unique, name: GenePrototype0001.Sim.ScenarioRegistry},
       # Registry for Ontos instances
-      {Registry, keys: :unique, name: GenePrototyp0001.Onta.OntosRegistry},
+      {Registry, keys: :unique, name: GenePrototype0001.Onta.OntosRegistry},
       # Registry for Numina instances
       {Registry, keys: :unique, name: GenePrototype0001.Registry},
       # Registry for WebSocket connections
       {Registry, keys: :duplicate, name: SimulationSocketRegistry},
+      # Dynamic supervisor for Scenario instances
+      {GenePrototype0001.Sim.ScenarioSupervisor, []},
       # Dynamic supervisor for Ontos instances
-      {GenePrototyp0001.Onta.OntosSupervisor, []},
+      {GenePrototype0001.Onta.OntosSupervisor, []},
       # External connection supervisor
       {GenePrototype0001.Sim.ExternalConnectionSupervisor, [
         receive_port: 7400,

@@ -1,10 +1,11 @@
-defmodule GenePrototyp0001.Onta.Ontos do
+defmodule GenePrototype0001.Onta.Ontos do
   use GenServer
   require Logger
 
   # Client API
   def start_link({agent_id, opts}) do
     name = via_tuple(agent_id)
+    Logger.debug("Ontos.start_link(#{inspect(agent_id)}, #{inspect(opts)}) -> name=#{inspect(name)}")
     GenServer.start_link(__MODULE__, {agent_id, opts}, name: name)
   end
 
@@ -169,7 +170,7 @@ defmodule GenePrototyp0001.Onta.Ontos do
 
   # Helper functions
   defp via_tuple(agent_id) do
-    {:via, Registry, {GenePrototyp0001.Onta.OntosRegistry, agent_id}}
+    {:via, Registry, {GenePrototype0001.Onta.OntosRegistry, agent_id}}
   end
 
   defp update_sensor_data(state, sensor_id, values) do

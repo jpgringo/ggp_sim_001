@@ -1,4 +1,4 @@
-defmodule GenePrototyp0001.Onta.OntosSupervisor do
+defmodule GenePrototype0001.Onta.OntosSupervisor do
   use DynamicSupervisor
   require Logger
 
@@ -16,7 +16,7 @@ defmodule GenePrototyp0001.Onta.OntosSupervisor do
   def start_ontos(agent_id, params \\ %{}) do
     available_actuators = Map.get(params, "actuators", 0)
     numina = Map.get(params, "numina", [GenePrototype0001.Numina.BasicMotionNumen])
-    spec = {GenePrototyp0001.Onta.Ontos, {agent_id, [available_actuators: available_actuators, numina: numina]}}
+    spec = {GenePrototype0001.Onta.Ontos, {agent_id, [available_actuators: available_actuators, numina: numina]}}
     DynamicSupervisor.start_child(__MODULE__, spec)
   end
 
