@@ -19,11 +19,11 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   @impl true
-  def handle_call({:start_sim, params}, _from, %{scenario_in_progress: true} = state) do
+  def handle_call({:start_scenario, params}, _from, %{scenario_in_progress: true} = state) do
     {:reply, {:error, :scenario_in_progress}, state}
   end
 
-  def handle_call({:start_sim, params}, _from, state) do
+  def handle_call({:start_scenario, params}, _from, state) do
     Logger.debug("#{state.name} - handling start_sim call - param: #{inspect(params)}")
     GenServer.call(:SimUdpConnector, {:send_command, "start_scenario", params})
     {:reply, :ok, %{state | simulator_running: true, scenario_in_progress: true}}

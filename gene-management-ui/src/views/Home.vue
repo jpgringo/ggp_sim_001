@@ -1,6 +1,6 @@
 <template>
   <main class="home">
-    <SimControls :on-start-sim="handleSimStart"></SimControls>
+    <SimControls :on-start-scenario="handleScenarioStart"></SimControls>
     <SimInstrumentPanel></SimInstrumentPanel>
   </main>
 </template>
@@ -12,9 +12,9 @@ import {useSimStore} from "../../stores/simStore.js";
 import SimInstrumentPanel from "@/components/SimInstrumentPanel.vue";
 const simStore = useSimStore()
 
-const handleSimStart = async (opts) => {
-  console.log(`Home.handleSimStart - opts:`, opts);
-  let result = await api_connector.startSim(opts, [onSimMessage]);
+const handleScenarioStart = async (opts) => {
+  console.log(`Home.handleScenarioStart - opts:`, opts);
+  let result = await api_connector.startScenario(opts, [onSimMessage]);
   if(result?.ok) {
     simStore.scenarioStarted(opts.scenario);
   }

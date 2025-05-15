@@ -22,7 +22,7 @@ const simStore = useSimStore();
 const currentScenario = ref(simStore.scenarios[0]);
 
 const props = defineProps({
-  onStartSim: {
+  onStartScenario: {
     type: Function,
     required: false
   }
@@ -30,8 +30,8 @@ const props = defineProps({
 
 
 const handleStart = () => {
-  if (props.onStartSim) {
-    props.onStartSim({agents: parseInt(agentsInput.value.value), scenario: currentScenario.value});
+  if (props.onStartScenario) {
+    props.onStartScenario({agents: parseInt(agentsInput.value.value), scenario: currentScenario.value});
   }
 };
 

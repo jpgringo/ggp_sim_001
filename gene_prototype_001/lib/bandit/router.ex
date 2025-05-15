@@ -43,20 +43,20 @@ defmodule GenePrototype0001.Bandit.Router do
     |> send_resp(200, response)
   end
 
-  post "/api/simulation" do
+  post "/api/scenario" do
     {:ok, body, conn} = read_body(conn)
     {:ok, params} = Jason.decode(body)
-    case GenServer.call(:SimController, {:start_sim, params}) do
+    case GenServer.call(:SimController, {:start_scenario, params}) do
       :ok ->
         conn
-        |> put_resp_header("x-simulation-ws", "/ws/simulation")
+        |> put_resp_header("x-scenario-ws", "/ws/scenario")
         |> send_resp(200, "OK")
       {:error, :scenario_in_progress} -> send_resp(conn, 409, "Scenario in progress")
       resp -> send_resp(conn, 500, Jason.stringify(resp))
     end
   end
 
-  get "/ws/simulation" do
+  get "/ws/scenario" do
     case conn.method do
       "GET" ->
         conn
@@ -67,7 +67,7 @@ defmodule GenePrototype0001.Bandit.Router do
     end
   end
 
-  patch "/api/simulation/stop" do
+  patch "/api/scenario/stop" do
     GenServer.call(:SimController, :stop_scenario)
     send_resp(conn, 200, "OK")
   end

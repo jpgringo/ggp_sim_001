@@ -20,7 +20,9 @@ end box
 
 box "UI"
     boundary api_connector as APIC
-    actor "UI/User" as UI
+    entity Home as U_Home
+    entity SimControls as U_SCtrl
+    actor User
 end box
 
 == Sim Launching ==
@@ -44,18 +46,11 @@ Global --> UCS: sim_ready
 deactivate Global
 
 == Scenario Start ==
-    UI -> APIC: startSim
-    note right
-    Should be
-    `startScenario`
-    end note
-    APIC -> BR: POST /api/simulation
-    note over SC
-        again, should be
-        :start_scenario
-        not :start_sim
-    end note
-    BR -> SC: :start_sim
+    User -> U_SCtrl: click "Start"
+    U_SCtrl -> U_Home: handleScenarioStart
+    U_Home -> APIC: startScenario
+    APIC -> BR: POST /api/scenario
+    BR -> SC: :start_scenario
     return
     alt :scenario_in_progress
         BR -> APIC: 409 CONFLICT

@@ -1,6 +1,6 @@
 export default {
-  startSim: async (options, messageHandlers) => {
-    const response = await fetch('/api/simulation', {
+  startScenario: async (options, messageHandlers) => {
+    const response = await fetch('/api/scenario', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -9,7 +9,7 @@ export default {
     });
 
     if (response.ok) {
-      const wsPath = response.headers.get('x-simulation-ws');
+      const wsPath = response.headers.get('x-scenario-ws');
       if (wsPath) {
         const wsUrl = `ws://${window.location.host}${wsPath}`;
         const ws = new WebSocket(wsUrl);
@@ -37,7 +37,7 @@ export default {
     return response.json();
   },
   stopSim: async (options) => {
-    const response = await fetch('/api/simulation/stop', {
+    const response = await fetch('/api/scenario/stop', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
