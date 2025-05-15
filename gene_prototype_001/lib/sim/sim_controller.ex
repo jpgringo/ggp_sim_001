@@ -4,13 +4,14 @@ defmodule GenePrototype0001.Sim.SimController do
   use GenServer
   require Logger
 
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, name: :SimController)
+  def start_link(_opts) do
+    name = :SimController
+    GenServer.start_link(__MODULE__, [name: name], name: name)
   end
 
-  def init(_opts) do
+  def init([name: name]) do
     Logger.info("starting sim controller...")
-    {:ok, %{simulator_running: false, scenarios: [], scenario_in_progress: false}}
+    {:ok, %{name: name, simulator_running: false, scenarios: [], scenario_in_progress: false}}
   end
 
   def handle_call(:current_sim_state, _from, state) do
@@ -23,6 +24,7 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   def handle_call({:start_sim, params}, _from, state) do
+    Logger.debug("#{state.name} - handling start_sim call - param: #{inspect(params)}")
     GenServer.call(:SimUdpConnector, {:send_command, "start_scenario", params})
     {:reply, :ok, %{state | simulator_running: true, scenario_in_progress: true}}
   end
@@ -48,7 +50,7 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   def handle_cast(_msg, state) do
-    Logger.info("unknown cast #{inspect(_msg)}")
+    Logger.warn("#{state.name} - unknown cast #{inspect(_msg)}")
     {:noreply, state}
   end
 end

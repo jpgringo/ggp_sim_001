@@ -4,7 +4,8 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   def start_link(opts) do
     Logger.info("Starting UDP server...")
-    GenServer.start_link(__MODULE__, opts, name: :SimUdpConnector)
+    name = :SimUdpConnector
+    GenServer.start_link(__MODULE__, Keyword.put(opts, :name, name), name: name)
   end
 
   @impl true
@@ -12,9 +13,10 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     send_ip = Keyword.get(opts, :send_ip, "127.0.0.1")
     send_port = Keyword.get(opts, :send_port, 7401)
     receive_port = Keyword.fetch!(opts, :receive_port)
+    name = Keyword.fetch!(opts, :name)
     {:ok, socket} = :gen_udp.open(receive_port, [:binary, active: true, reuseaddr: true])
-    Logger.info("UDP server listening on port #{receive_port}")
-    {:ok, %{socket: socket, receive_port: receive_port, send_ip: send_ip, send_port: send_port, sim_ready: false}}
+    Logger.info("#{name} - UDP server listening on port #{receive_port}")
+    {:ok, %{name: name, socket: socket, receive_port: receive_port, send_ip: send_ip, send_port: send_port, sim_ready: false}}
   end
 
   @impl true
@@ -74,9 +76,12 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   # Private functions
+
+  #  ============================== SIM STATE HANDLERS ============================
   defp handle_rpc_call("sim_ready", params, state) do
-    Logger.info("Sim ready!!: #{inspect(params)}")
+    Logger.info("#{state.name} - Sim ready!!: #{inspect(params)}")
     GenServer.cast(:SimController, {:sim_ready, params})
+    GenePrototype0001.SimulationSocket.broadcast_start(params)
     {:noreply, %{state | sim_ready: true}}
   end
 
@@ -89,6 +94,22 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, %{state | sim_ready: false}}
   end
 
+  #  ============================== SCENARIO STATE HANDLERS ============================
+  defp handle_rpc_call("scenario_started", params, state) do
+    Logger.info("#{__MODULE__} - Scenario started!!: #{inspect(params)}")
+    GenServer.cast(:SimController, {:scenario_started, params})
+    {:noreply, %{state | sim_ready: true}}
+  end
+
+  defp handle_rpc_call("scenario_stopped", params, state) do
+    Logger.info("Scenario stopped!!: #{inspect(params)}")
+    # Forward batch to WebSocket clients
+    GenePrototype0001.SimulationSocket.broadcast_stop(params)
+
+    {:noreply, %{state | sim_ready: true}}
+  end
+
+  #  ============================== AGENT STATE HANDLERS ============================
   defp handle_rpc_call("agent_created", %{"id" => agent_id} = params, state) do
     Logger.info("Agent created: #{inspect(params)}")
     case GenePrototype0001.Onta.OntosSupervisor.start_ontos(agent_id, params) do
@@ -111,6 +132,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, state}
   end
 
+  #  ============================== SENSOR UPDATE HANDLERS ============================
   defp handle_rpc_call("sensor_data", %{"agent" => agent_id, "data" => data}, state) do
     case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
       [{_pid, _}] ->
@@ -139,21 +161,13 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, state}
   end
 
-  defp handle_rpc_call("scenario_stopped", params, state) do
-    Logger.info("Sim stopping!!: #{inspect(params)}")
-    # Forward batch to WebSocket clients
-    GenePrototype0001.SimulationSocket.broadcast_stop(params)
-
-    {:noreply, %{state | sim_ready: true}}
-  end
-
-
-
+  #  ============================== 'BACKSTOP' HANDLER ============================
   defp handle_rpc_call(method, _params, state) do
-    Logger.warning("Unknown method received: #{inspect(method)}")
+    Logger.warning("#{state.name} - Unknown method received: #{inspect(method)}")
     {:noreply, state}
   end
 
+  #  ============================== HELPER FUNCTIONS ============================
   def group_by_agent(batch) do
     batch
       |> Enum.group_by(fn entry -> entry["agent"] end)

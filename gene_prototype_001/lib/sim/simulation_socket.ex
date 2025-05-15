@@ -12,9 +12,19 @@ defmodule GenePrototype0001.SimulationSocket do
     end)
   end
 
-  def broadcast_stop(params) do
+  def broadcast_start(params) do
+    Logger.debug("BROADCASTING START!!")
     Registry.dispatch(SimulationSocketRegistry, "simulation", fn entries ->
-      Logger.debug("BROADCASTING STOP!!")
+      message = Jason.encode!(%{type: "start", data: params})
+      for {pid, _} <- entries do
+        Process.send(pid, {:send_message, message}, [])
+      end
+    end)
+  end
+
+  def broadcast_stop(params) do
+    Logger.debug("BROADCASTING STOP!!")
+    Registry.dispatch(SimulationSocketRegistry, "simulation", fn entries ->
       message = Jason.encode!(%{type: "stop", data: params})
       for {pid, _} <- entries do
         Process.send(pid, {:send_message, message}, [])
