@@ -1,0 +1,95 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+'autonumber
+
+box "Simulation Environment"
+    participant Agent
+    participant Maze
+    participant Global
+end box
+
+box "Server"
+    boundary "UDP connection server" as UCS
+    participant SimController as SC
+    control OntaSupervisor as OS
+    participant Ontos
+    participant SimulationSocket as SS
+    boundary "Bandit Router" as BR
+end box
+
+box "UI"
+    boundary api_connector as APIC
+    actor "UI/User" as UI
+end box
+
+== Sim Launching ==
+
+Global --> UCS: sim_ready
+UCS --> SC: :sim_ready
+activate SC
+    SC -> SC: update state
+    note left
+        updates `sim_running`
+        and `scenarios` list
+    end note
+deactivate SC
+UCS -> SS: broadcast_start
+
+== Sim Quitting==
+
+Global -> Global: _exit_tree
+activate Global
+Global --> UCS: sim_ready
+deactivate Global
+
+== Scenario Start ==
+    UI -> APIC: startSim
+    note right
+    Should be
+    `startScenario`
+    end note
+    APIC -> BR: POST /api/simulation
+    note over SC
+        again, should be
+        :start_scenario
+        not :start_sim
+    end note
+    BR -> SC: :start_sim
+    return
+    alt :scenario_in_progress
+        BR -> APIC: 409 CONFLICT
+    else :ok
+        BR -> APIC: 200 OK
+        SC -> UCS: :send_command ("start scenario")
+        UCS -> Global: udp packet ("start_scenario")
+        Global -> Maze: start_scenario
+        activate Maze
+        Maze -> Maze: stop_scenario
+        Maze -> Maze: load & create maze
+        Maze -> Maze: spawn players
+        loop agent count
+            Maze -> Agent: instantiate & append
+            activate Agent
+                Agent -> Global: transmit("agent_created")
+                note right
+                    Agents should be able to
+                    communicate 'directly' with their
+                    Ontos, but it would be better if
+                    the Onta were instantiated as part of the
+                    ‘start scenario’ call, so that each
+                    Scenario had knowledge of and supervision
+                    over its Onto, Numina, etc.
+                end note
+                Global -> UCS: "agent_created"
+            deactivate Agent
+            UCS -> OS:start_ontos
+            OS -> Ontos:start_link
+            activate Ontos
+                Ontos -> Ontos: :add_numen, etc.
+                return
+            deactivate Ontos
+        end
+        deactivate Maze
+    end
+@enduml

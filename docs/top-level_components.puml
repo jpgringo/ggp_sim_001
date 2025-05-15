@@ -1,0 +1,32 @@
+@startuml
+'https://plantuml.com/component-diagram
+
+
+package "Server" {
+  () UDP
+  [UDP connection server] as UCS
+  UDP - UCS
+  [Bandit router] as BR
+  UCS - BR
+  () HTTP
+  HTTP - BR
+  () WS
+  BR - WS
+}
+
+node "Sim" {
+  [Global - UDP handlers] as GUDP
+  UDP <..> GUDP
+  GUDP <-> [Maze]
+  [Players] as Agent
+  GUDP <-> Agent
+  Maze <-> Agent
+}
+
+node "UI" {
+    HTTP <..> [api_connector]
+    WS <..> [api_connector]
+
+}
+
+@enduml
