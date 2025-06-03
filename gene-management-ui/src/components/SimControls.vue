@@ -9,6 +9,7 @@
       </fieldset>
       <button @click="handleStart">Start</button>
       <button @click="handleStop">Stop</button>
+      <button @click="handlePanic" class="panic">Panic!</button>
     </form>
   </div>
 </template>
@@ -24,7 +25,15 @@ const currentScenario = ref(simStore.scenarios[0]);
 const props = defineProps({
   onStartScenario: {
     type: Function,
-    required: false
+    required: true
+  },
+  onStopScenario: {
+    type: Function,
+    required: true
+  },
+  onPanic: {
+    type: Function,
+    required: true
   }
 });
 
@@ -36,7 +45,20 @@ const handleStart = () => {
 };
 
 const handleStop = () => {
-  console.log('stopping sim...');
-  api_connector.stopSim();
+  if (props.onStopScenario) {
+    props.onStopScenario(simStore.activeScenario);
+  } else {
+    console.error("No handler for stop scenario");
+  }
 };
+
+const handlePanic = () => {
+  if (props.onPanic) {
+    props.onPanic();
+  } else {
+    console.error("No handler for panic");
+  }
+};
+
+
 </script>

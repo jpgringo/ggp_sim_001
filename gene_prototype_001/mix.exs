@@ -24,9 +24,10 @@ defmodule GenePrototype0001.MixProject do
     [
       {:jason, "~> 1.4"},
       {:nx, "~> 0.9.2"},
-      {:bandit, "~> 1.6"},
+      {:bandit, "~> 1.6.11"},
       {:websock, "~> 0.5"},
-      {:websock_adapter, "~> 0.5"}
+      {:websock_adapter, "~> 0.5"},
+      {:req, "~> 0.5.10", only: :test}
     ]
   end
 end

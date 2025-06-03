@@ -6,9 +6,13 @@ extends CharacterBody2D
 const VELOCITY_SENSOR_ID = 0
 const TOUCH_SENSOR_ID = 1
 const HEARTBEAT_SEC = 3.0  # Send selected sensor updates at this interval
+const ACTUATORS = 1
 
 # Node references
 @onready var heartbeat_timer = $VelocityHeartbeatTimer
+
+# 'owning' scenario
+@export var scenario_id: String
 
 # Player states
 var speed = 100
@@ -106,6 +110,7 @@ func _on_heartbeat():
 
 func transmit_velocity_reading():
 	Global.transmit("sensor_data", {
+		"scenario": scenario_id,
 		"agent": self.get_instance_id(),
 		"data": [VELOCITY_SENSOR_ID, PackedFloat32Array([velocity.x, velocity.y])]
 	})
@@ -133,6 +138,7 @@ func actuator_input(data: Array):
 func queue_velocity_event(velocity_reading):
 	if _event_handler is Callable:
 		_event_handler.call({
+		"scenario": scenario_id,
 		"agent": self.get_instance_id(),
 		"data": [VELOCITY_SENSOR_ID, PackedFloat32Array([velocity_reading.x, velocity_reading.y])]
 	})
@@ -140,6 +146,7 @@ func queue_velocity_event(velocity_reading):
 func queue_collision_event(collision):
 	if _event_handler is Callable:
 		_event_handler.call({
+		"scenario": scenario_id,
 		# the main node's instance ID is probably good for identifying the agent, but for geometry
 		# calculations we probably want collision.get_local_shape()
 		"agent": self.get_instance_id(),
@@ -154,6 +161,7 @@ func transmit_collision_event(collision):
 	# very, very simple agent should only understand that it has contacted something, and where on
 	# its 'body' the contact occurred
 	var data = {
+		"scenario": scenario_id,
 		# the main node's instance ID is probably good for identifying the agent, but for geometry
 		# calculations we probably want collision.get_local_shape()
 		"agent": self.get_instance_id(),

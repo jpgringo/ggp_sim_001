@@ -71,7 +71,7 @@ defmodule GenePrototype0001.Numina.BasicMotionNumen do
 
   end
 
-    defp process_sensor_data(velocity_sensor, touch_sensor, state) when velocity_sensor == {:ok, [0.0, 0.0]} do
+  defp process_sensor_data(velocity_sensor, _touch_sensor, state) when velocity_sensor == {:ok, [0.0, 0.0]} do
     handle_velocity(velocity_sensor, state)
   end
 
@@ -107,7 +107,7 @@ defmodule GenePrototype0001.Numina.BasicMotionNumen do
   end
 
   defp get_sensor_values_new(sensor_data, target_sensor_id) do
-    case Enum.find(sensor_data, fn [id, values] -> id == target_sensor_id end) do
+    case Enum.find(sensor_data, fn [id, _values] -> id == target_sensor_id end) do
       [_, values] -> {:ok, values}
       nil -> :not_found
     end
@@ -117,7 +117,7 @@ defmodule GenePrototype0001.Numina.BasicMotionNumen do
   defp handle_velocity({:ok, [v1, v2]}, state) when abs(v1) < 0.001 and abs(v2) < 0.001 do
     # Generate random motion when stationary
     random_values = [:rand.uniform() * 2 - 1, :rand.uniform() * 2 - 1]
-    Logger.info("BasicMotionNumen #{state.agent_id} generating random motion: #{inspect(random_values)}")
+    DirectDebug.info("BasicMotionNumen #{state.agent_id} generating random motion: #{inspect(random_values)}")
     {:ok, state, [{:actuator_data, [0, random_values]}]}
   end
 

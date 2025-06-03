@@ -8,6 +8,7 @@ extends Node2D
 var maze_def = null
 var target_area = null  # Reference to the target Area2D
 var current_scenario = ""
+var current_scenario_id = ""
 
 # Desired grid dimensions
 const GRID_COLUMNS = 30  # desired number of columns
@@ -217,6 +218,7 @@ func spawn_players(player_scene, instance_count = 1):
 			#if is_valid_spawnpoint(spawn_coords) and not
 			#is_spawnpoint_taken(spawn_coords):
 			var player = player_scene.instantiate()
+			player.scenario_id = current_scenario_id
 			player.event_handler = Callable(self, "_handle_event")
 			player.global_position = spawn_coords
 			spawned_players.add_child(player)
@@ -224,28 +226,30 @@ func spawn_players(player_scene, instance_count = 1):
 			spawned = true
 	return players_in_level
 
-func start_scenario(agent_scene, scenario, player_count):
-	print("will start scenario %s" % scenario)
+func start_scenario(agent_scene, scenario, unique_id, player_count):
+	print("will start scenario %s with unique id %s" % [scenario, unique_id])
 	stop_scenario(true, false)
 	current_scenario = scenario
+	current_scenario_id = unique_id
 	maze_def = _load_maze(scenario)
 	calculate_dimensions()
 	create_maze()
 	var new_players = spawn_players(agent_scene, player_count)
-	var player_ids = new_players.map(func(player): return str(player.get_instance_id()))
-	Global.transmit("scenario_started", {"scenario": scenario, "player_ids": player_ids})
+	var player_data = new_players.map(func(player): return {"id": str(player.get_instance_id()), "actuators": player.ACTUATORS})
+	Global.transmit("scenario_started", {"scenario": scenario, "unique_id": unique_id, "agents": player_data})
 	batch_timer.start()
 
 func stop_scenario(remove_perimeter = false, broadcast = true):
-	print("will stop scenario %s" % current_scenario)
+	print("maze will stop scenario %s (%s)" % [current_scenario_id, current_scenario])
 	# Remove and destroy all spawned players
 	for player in spawned_players.get_children():
 		player.queue_free()
 	clear_scenario(remove_perimeter)
 	batch_timer.stop()
 	if broadcast:
-		Global.transmit("scenario_stopped", {"scenario": current_scenario})
+		Global.transmit("scenario_stopped", {"id": current_scenario_id, "scenario": current_scenario})
 	current_scenario = ""
+	current_scenario_id = ""
 
 
 func clear_scenario(remove_perimeter = false):

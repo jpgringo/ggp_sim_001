@@ -1,6 +1,7 @@
 defmodule GenePrototype0001.Sim.UdpConnectionServer do
   use GenServer
   require Logger
+  require DirectDebug
 
   def start_link(opts) do
     Logger.info("Starting UDP server...")
@@ -21,22 +22,32 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   @impl true
   def handle_info({:udp, _socket, ip, port, data}, state) do
+    IO.puts("HANDLING UDP INFO!! #{inspect(data)}")
     client_string = "#{:inet.ntoa(ip)}:#{port}"
     new_state = case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->
-        Logger.info("Received '#{method}' request from #{client_string} with params: #{inspect(params)}")
+        DirectDebug.extra("Received '#{method}' request from #{client_string} with params: #{inspect(params)}", true)
         case handle_rpc_call(method, params, state) do
           {:noreply, updated_state} -> updated_state
           _ -> state
         end
       {:ok, _} ->
-        Logger.info("Invalid JSON-RPC request from #{client_string}: #{inspect(data)}")
+        :logger.info("Invalid JSON-RPC request from #{client_string}: #{inspect(data)}")
         state
-      {:error, _} ->
-        Logger.info("Bad packet received from #{client_string}")
+      {:error, _err} ->
+        :logger.info("Bad packet received from #{client_string}")
+        state
+      result ->
+        :logger.warning("unknown result attempting to decode JSON: #{inspect(result)}")
         state
     end
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info(msg, state) do
+    :logger.warning(":SimUdpConnector received unknown message: #{inspect(msg)}")
+    {:noreply, state}
   end
 
   @impl true
@@ -97,12 +108,13 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   #  ============================== SCENARIO STATE HANDLERS ============================
   defp handle_rpc_call("scenario_started", params, state) do
     Logger.info("#{__MODULE__} - Scenario started!!: #{inspect(params)}")
-    GenServer.cast(:SimController, {:scenario_started, params})
+    GenePrototype0001.Sim.ScenarioSupervisor.start_scenario(params)
     {:noreply, %{state | sim_ready: true}}
   end
 
   defp handle_rpc_call("scenario_stopped", params, state) do
     Logger.info("Scenario stopped!!: #{inspect(params)}")
+    GenePrototype0001.Sim.ScenarioSupervisor.stop_scenario(params["id"])
     # Forward batch to WebSocket clients
     GenePrototype0001.SimulationSocket.broadcast_stop(params)
 
@@ -110,14 +122,8 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   #  ============================== AGENT STATE HANDLERS ============================
-  defp handle_rpc_call("agent_created", %{"id" => agent_id} = params, state) do
-    Logger.info("Agent created: #{inspect(params)}")
-    case GenePrototype0001.Onta.OntosSupervisor.start_ontos(agent_id, params) do
-      {:ok, pid} ->
-        Logger.info("Started Ontos for agent #{agent_id} with pid #{inspect(pid)}")
-      {:error, reason} ->
-        Logger.error("Failed to start Ontos for agent #{agent_id}: #{inspect(reason)}")
-    end
+  defp handle_rpc_call("agent_created", %{"id" => _agent_id}, state) do
+    # this is emitted by sims, but we don't need to handle it at this time (onta are created when the scenario is initialize)
     {:noreply, state}
   end
 
@@ -138,26 +144,39 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
       [{_pid, _}] ->
         GenePrototype0001.Onta.Ontos.handle_sensor_data(agent_id, data)
       [] ->
-        Logger.warning("Received sensor data for unknown agent #{agent_id}")
+        Logger.warning("1. Received sensor data for unknown agent #{agent_id}")
     end
     {:noreply, state}
   end
 
   defp handle_rpc_call("batch", batch, state) do
-    Logger.info("received batch: #{inspect(batch)}")
+    DirectDebug.extra("#{state.name} - handling batch: #{inspect(batch)}")
 
     # Forward batch to WebSocket clients
     GenePrototype0001.SimulationSocket.broadcast_batch(batch)
 
-    group_by_agent(batch)
-    |> Enum.each(fn entry ->
-      case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, entry["agent"]) do
-        [{_pid, _}] ->
-          GenServer.cast(_pid, {:sensor_batch, entry["events"]})
+    group_by_scenario(batch)
+    |> Enum.each(fn scenario ->
+      DirectDebug.extra("#{state.name} - extracted data from batch for scenario '#{inspect(scenario)}'")
+      case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario["scenario"]) do
+        [{pid, _}] ->
+          DirectDebug.extra("#{state.name} - found scenario (#{inspect(pid)})")
+          GenServer.cast(pid, {:sensor_batch, scenario["entries"]})
         [] ->
-          Logger.warning("Received sensor data for unknown agent #{entry["agent"]}")
+          DirectDebug.warning("Received sensor data for unknown scenario #{scenario["scenario"]}", true)
       end
     end)
+
+    # TODO: delete this, it should ALWAYS be handled through Scenarios
+#    group_by_agent(batch)
+#    |> Enum.each(fn entry ->
+#      case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, entry["agent"]) do
+#        [{_pid, _}] ->
+#          GenServer.cast(_pid, {:sensor_batch, entry["events"]})
+#        [] ->
+#          Logger.warning("2. Received sensor data for unknown agent #{entry["agent"]}")
+#      end
+#    end)
     {:noreply, state}
   end
 
@@ -168,6 +187,17 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   #  ============================== HELPER FUNCTIONS ============================
+  def group_by_scenario(batch) do
+    batch
+      |> Enum.group_by(fn entry -> entry["scenario"] end)
+      |> Enum.map(fn {scenario, entries} ->
+        %{
+        "scenario" => scenario,
+        "entries" => Enum.map(entries, &Map.delete(&1, "scenario"))
+        }
+    end)
+  end
+
   def group_by_agent(batch) do
     batch
       |> Enum.group_by(fn entry -> entry["agent"] end)

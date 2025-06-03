@@ -97,7 +97,7 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 
 	if method == "actuator_data" and params is Dictionary:
 		print("handling actuator_data:", params)
-		var agent_id = params.get("agent")
+		var agent_id = int(params.get("agent"))
 		var data = params.get("data")
 		if agent_id != null and data != null:
 			var node = instance_from_id(agent_id)
@@ -107,18 +107,19 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 				#print("Warning: Could not find turtle with ID %d or turtle lacks actuator_input method" % agent_id)
 	else: if method == "start_scenario":
 		var scenario = params.get("scenario")
+		var unique_id = params.get("unique_id")
 		var player_count = params.get("agents", 1)
-		call_deferred("_start_scenario_main_thread", turtle_scene, scenario, player_count)
-	else: if method == "stop_scenario":
+		call_deferred("_start_scenario_main_thread", turtle_scene, scenario, unique_id, player_count)
+	else: if method == "stop_scenario" || method == "panic":
 		call_deferred("_stop_scenario_main_thread")
 
 func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)
 	udp_transmitter.put_packet(JSON.stringify(msg).to_utf8_buffer())
 
-func _start_scenario_main_thread(agent_scene, scenario, player_count):
+func _start_scenario_main_thread(agent_scene, scenario, unique_id, player_count):
 	if maze_scene and maze_scene.is_inside_tree():
-		maze_scene.start_scenario(agent_scene, scenario, player_count)
+		maze_scene.start_scenario(agent_scene, scenario, unique_id, player_count)
 	else:
 		print("Maze is not in the scene tree")
 

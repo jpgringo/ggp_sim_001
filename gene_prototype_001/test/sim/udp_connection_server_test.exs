@@ -1,6 +1,5 @@
 defmodule GenePrototype0001.Sim.UdpConnectionServerTest do
   use ExUnit.Case
-  alias GenePrototype0001.Sim.UdpConnectionServer
 
   # This test can be run from IEx using:
   # GenePrototype0001.Sim.UdpConnectionServerTest.test_batch_call_has_agent()

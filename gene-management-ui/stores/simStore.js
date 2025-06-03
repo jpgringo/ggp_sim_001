@@ -13,8 +13,9 @@ export const useSimStore = defineStore('sim', {
       this.running = data.ready
       this.scenarios = data.scenarios;
     },
-    scenarioStarted(id) {
-      this.activeScenario = {id: id};
+    scenarioStarted(scenario, id) {
+      console.log(`simStore.scenarioStarted - scenario = ${scenario}; id=${id}`);
+      this.activeScenario = {scenario: scenario, id: id};
     },
     scenarioStopped(id) {
       this.activeScenario = undefined;

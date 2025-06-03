@@ -34,16 +34,46 @@ export default {
       }
     }
 
+    return response;
+  },
+
+  stopScenario: async (scenario) => {
+    console.log(`api_connector.stopScenario - scenario:`, scenario);
+    let response
+    try {
+      response = await fetch(`/api/scenario/${scenario?.id || "NO_SCENARIO" }/stop`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scenario)
+      });
+    } catch (error) {
+      console.error(error);
+      return error.response;
+    }
+    if(!response?.ok) {
+      console.error('Could not stop scenario.:', response);
+    }
     return response.json();
   },
-  stopSim: async (options) => {
-    const response = await fetch('/api/scenario/stop', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(options)
-    });
-    return response.json();
-  }
+  panic: async () => {
+    console.log(`api_connector.panic`);
+    let response;
+    try {
+      response = await fetch(`/api/scenario/panic`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      return error;
+    }
+    if(!response.ok) {
+      console.error('Panic failed.:', response);
+    }
+    return response;
+  },
 }

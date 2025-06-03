@@ -1,12 +1,15 @@
 defmodule GenePrototype0001.Onta.Ontos do
   use GenServer
   require Logger
+  require DirectDebug
 
   # Client API
   def start_link({agent_id, opts}) do
-    name = via_tuple(agent_id)
-    Logger.debug("Ontos.start_link(#{inspect(agent_id)}, #{inspect(opts)}) -> name=#{inspect(name)}")
-    GenServer.start_link(__MODULE__, {agent_id, opts}, name: name)
+    unique_id = "#{opts[:scenario_id]}_#{agent_id}"
+#    name = via_tuple(agent_id)
+    name = via_tuple(unique_id)
+    DirectDebug.info("Ontos.start_link(#{inspect(unique_id)}, #{inspect(opts)}) -> name=#{inspect(name)}")
+    GenServer.start_link(__MODULE__, {unique_id, [agent_id: agent_id] ++ opts}, name: name)
   end
 
   def add_numen(agent_id, numen_module) do
@@ -28,28 +31,30 @@ defmodule GenePrototype0001.Onta.Ontos do
   # Server callbacks
 
   @impl true
-  def init({agent_id, opts}) do
-    Logger.info("Starting Ontos for agent #{agent_id} with opts: #{inspect(opts)}")
+  def init({unique_id, opts}) do
+    DirectDebug.info("Starting Ontos for agent #{unique_id} with opts: #{inspect(opts)}")
     available_actuators = Keyword.get(opts, :available_actuators, 0)
     numina = Keyword.get(opts, :numina, [])
+    agent_id = Keyword.get(opts, :agent_id)
 
     # Start the NumenSupervisor
-    {:ok, numen_sup} = GenePrototype0001.Numina.NumenSupervisor.start_link(agent_id)
+    {:ok, numen_sup} = GenePrototype0001.Numina.NumenSupervisor.start_link(unique_id)
 
     # Start initial Numina
     numen_pids = for numen_module <- numina do
-      Logger.info("Starting Numen: #{inspect(numen_module)}")
-      {:ok, pid} = GenePrototype0001.Numina.NumenSupervisor.start_numen(numen_sup, numen_module, agent_id)
+      DirectDebug.info("Starting Numen: #{inspect(numen_module)}")
+      {:ok, pid} = GenePrototype0001.Numina.NumenSupervisor.start_numen(numen_sup, numen_module, unique_id)
       pid
     end
 
     # Create ETS table for sensor data
     # Each entry is {sensor_id, values}
-    table_name = sensor_table_name(agent_id)
+    table_name = sensor_table_name(unique_id)
     :ets.new(table_name, [:named_table, :public, :set])
 
     {:ok, %{
-      agent_id: agent_id,
+      agent_id: unique_id,
+      raw_id: agent_id,
       available_actuators: available_actuators,
       numen_supervisor: numen_sup,
       numen_pids: numen_pids,
@@ -69,7 +74,7 @@ defmodule GenePrototype0001.Onta.Ontos do
 
   @impl true
   def handle_call({:add_numen, numen_module}, _from, state) do
-    case GenePrototype0001.Numina.NumenSupervisor.start_numen(state.numen_supervisor, numen_module, state.agent_id) do
+    case GenePrototype0001.Numina.NumenSupervisor.start_numen(state.numen_supervisor, numen_module, state.raw_id) do
       {:ok, pid} ->
         new_state = Map.update!(state, :numen_pids, &[pid | &1])
         {:reply, {:ok, pid}, new_state}
@@ -90,23 +95,19 @@ defmodule GenePrototype0001.Onta.Ontos do
   end
 
 
-  @impl true
   def process_incoming_sensor_set(sensor_data_set, state) do
     # TODO: if local state updates happen at all, they should happen separately from the processing
-
+    # TODO: ACTUALLY… the way this is architected is messed up. Should be a `call`
     # Notify all Numina
     Enum.each(state.numen_pids, fn pid ->
       GenServer.cast(pid, {:process_sensor_data_set, sensor_data_set})
     end)
-
-#    Logger.debug("Ontos #{state.agent_id} received sensor data: #{inspect([sensor_id, values])}")
 
     {:noreply, :ok, state}
   end
 
 
   # there is an asynchronous version below
-  @impl true
   def process_incoming_sensor_datum([sensor_id, values], state) do
     # Store sensor data
     new_state = update_sensor_data(state, sensor_id, values)
@@ -125,9 +126,9 @@ defmodule GenePrototype0001.Onta.Ontos do
 
   @impl true
   def handle_cast({:sensor_batch, sensor_data_list}, state) do
-    Logger.debug("Ontos received sensor batch: #{inspect(sensor_data_list)}")
+    DirectDebug.info("Ontos #{state.agent_id} received sensor batch: #{inspect(sensor_data_list)}")
     preprocessed_input = preprocess_data_batch(sensor_data_list)
-    Logger.debug("PREPROCESSED sensor batch: #{inspect(preprocessed_input)}")
+    DirectDebug.extra("#{state.agent_id} - preprocessed sensor batch: #{inspect(preprocessed_input)}")
 
     process_incoming_sensor_set(preprocessed_input, state)
 
@@ -157,10 +158,10 @@ defmodule GenePrototype0001.Onta.Ontos do
       case command do
         {:actuator_data, payload} ->
           GenServer.call(:SimUdpConnector, {:send_actuator_data,
-            state.agent_id,
+            state.raw_id,
             payload}
           )
-          Logger.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
+          DirectDebug.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
         _ ->
           Logger.warning("Ontos #{state.agent_id} received unknown command: #{inspect(command)}")
       end
@@ -199,7 +200,6 @@ defmodule GenePrototype0001.Onta.Ontos do
   def preprocess_data_batch(sensor_data_list) do
     # bin the data by sensor id
     grouped_data = sensor_data_list |> Enum.group_by(fn [id, _] -> id end)
-    IO.puts("grouped_data: #{inspect(grouped_data)}")
     # average each sensor; this is just one way to summarize a batch. It may be more relevant
     # to grab the most recent entry for each sensor only (but ultimately for the algorithm to
     # decide? Should this functionality evolve also?)
@@ -217,5 +217,10 @@ defmodule GenePrototype0001.Onta.Ontos do
       ]
     end)
     vector_set
+  end
+
+  @impl true
+  def terminate(reason, state) do
+    IO.puts("Ontos with state #{inspect(state)} terminating for reason '#{inspect(reason)}'")
   end
 end

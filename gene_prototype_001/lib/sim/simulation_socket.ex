@@ -13,7 +13,8 @@ defmodule GenePrototype0001.SimulationSocket do
   end
 
   def broadcast_start(params) do
-    Logger.debug("BROADCASTING START!!")
+    # Logger.debug("BROADCASTING START!!")
+    DirectDebug.info("BROADCASTING START!!")
     Registry.dispatch(SimulationSocketRegistry, "simulation", fn entries ->
       message = Jason.encode!(%{type: "start", data: params})
       for {pid, _} <- entries do

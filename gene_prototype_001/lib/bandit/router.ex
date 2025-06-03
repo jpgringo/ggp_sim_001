@@ -52,7 +52,7 @@ defmodule GenePrototype0001.Bandit.Router do
         |> put_resp_header("x-scenario-ws", "/ws/scenario")
         |> send_resp(200, "OK")
       {:error, :scenario_in_progress} -> send_resp(conn, 409, "Scenario in progress")
-      resp -> send_resp(conn, 500, Jason.stringify(resp))
+      resp -> send_resp(conn, 500, Jason.encode!(resp))
     end
   end
 
@@ -67,9 +67,36 @@ defmodule GenePrototype0001.Bandit.Router do
     end
   end
 
-  patch "/api/scenario/stop" do
-    GenServer.call(:SimController, :stop_scenario)
+  patch "/api/scenario/:scenario_id/stop" do
+    DirectDebug.info("handling stop scenario request for #{conn.params["scenario_id"]}")
+    _result = GenServer.call(:SimController, {:stop_scenario, conn.params["scenario_id"]})
     send_resp(conn, 200, "OK")
+  end
+
+  put "/api/scenario/panic" do
+    resp = GenServer.call(:SimController, :panic)
+    DirectDebug.info("panic: #{inspect(resp)}")
+    send_resp(conn, 200, "OK")
+  end
+
+  post "/api/observer" do
+    case Process.whereis(:observer) do
+      nil ->
+        :observer.start()
+        send_resp(conn, 200, "OK")
+      _pid ->
+        send_resp(conn, 409, "Observer is already running")
+    end
+  end
+
+  delete "/api/observer" do
+    case Process.whereis(:observer) do
+      nil ->
+        send_resp(conn, 404, "Observer is not running")
+      _pid ->
+        :observer.stop()
+        send_resp(conn, 200, "OK")
+    end
   end
 
   match _ do

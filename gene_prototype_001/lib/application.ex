@@ -23,7 +23,15 @@ defmodule GenePrototype0001.Application do
         send_port: 7401
       ]},
       # Bandit HTTP server
-      {Bandit, plug: GenePrototype0001.Bandit.Router, port: Application.get_env(:bandit, :port, 4000)}
+      {Bandit,
+        plug: GenePrototype0001.Bandit.Router,
+        port: Application.get_env(:bandit, :port, 4000),
+        thousand_island_options: [
+          num_acceptors: 2,
+          num_connections: 5,
+          read_timeout: 2_000
+        ]
+      }
     ]
 
     opts = [strategy: :one_for_one, name: GenePrototype0001.Supervisor]
