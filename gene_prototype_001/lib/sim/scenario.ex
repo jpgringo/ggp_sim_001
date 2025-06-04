@@ -36,6 +36,12 @@ defmodule GenePrototype0001.Sim.Scenario do
   end
 
   @impl true
+  def handle_call(:get_onta, _from, state) do
+    supervised_onta = Enum.map(DynamicSupervisor.which_children(state.ontasup), fn {_, pid, _, _} -> pid end)
+    {:reply, {:ok, supervised_onta}, state}
+  end
+
+  @impl true
   def handle_call(_msg, _from, state) do
     {:reply, :ok, state}
   end

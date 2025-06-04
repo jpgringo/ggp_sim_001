@@ -84,6 +84,12 @@ defmodule GenePrototype0001.Features.ScenarioManagementTest do
     assert true
   end
 
+  defthen ~r/^(?<onta>\d+) Onta should be associated with the scenario$/, %{onta: onta_count}, state do
+    IO.puts("checking count of Onta")
+    {:ok, onta} = GenServer.call(state.scenario_pid, :get_onta)
+    {expected_onta, _} = Integer.parse(onta_count)
+    assert length(onta) == expected_onta
+  end
 
   # =========================== HELPER FUNCTIONS =========================== #
 
