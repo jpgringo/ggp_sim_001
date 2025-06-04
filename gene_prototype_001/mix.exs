@@ -22,13 +22,14 @@ defmodule GenePrototype0001.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:jason, "~> 1.4"},
-      {:nx, "~> 0.9.2"},
       {:bandit, "~> 1.6.11"},
+      {:cabbage, "~> 0.4.1"},
+      {:jason, "~> 1.4"},
+      {:nanoid, "~> 2.1"},
+      {:nx, "~> 0.9.2"},
+      {:req, "~> 0.5.10", only: :test},
       {:websock, "~> 0.5"},
       {:websock_adapter, "~> 0.5"},
-      {:req, "~> 0.5.10", only: :test},
-      {:cabbage, "~> 0.4.1"}
     ]
   end
 end

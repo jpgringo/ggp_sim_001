@@ -13,6 +13,16 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
+  def has_scenario?(_resource_id, run_id) do
+    case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, "#{run_id}") do
+      [{pid, _}] ->
+        {:ok, pid}
+      [] ->
+        {:error, :not_found}
+    end
+
+  end
+
   def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents}) do
     Logger.debug("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}")
 
