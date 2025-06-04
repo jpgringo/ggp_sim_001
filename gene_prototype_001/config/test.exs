@@ -18,17 +18,17 @@ import Config
 #  metadata: [:request_id]
 #
 ## Bandit server configuration; 4000 is alreay the Bandit default
-config :bandit,
-  startup_log: false,
-  port: 4000,
-    # Reduce connection pool size
-  thousand_island: [
-    startup_log: false,
-    pool_size: 4,  # Default is 100
-    max_connections: 16,  # Default is 16384
-    logger_level: :error
-  ]
-
-config :logger,
-       level: :error,
-       backends: []
+#config :bandit,
+#  startup_log: false,
+#  port: 4000,
+#    # Reduce connection pool size
+#  thousand_island: [
+#    startup_log: false,
+#    pool_size: 4,  # Default is 100
+#    max_connections: 16,  # Default is 16384
+#    logger_level: :error
+#  ]
+#
+#config :logger,
+#       level: :error,
+#       backends: []

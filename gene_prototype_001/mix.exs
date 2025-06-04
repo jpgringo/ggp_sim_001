@@ -27,7 +27,8 @@ defmodule GenePrototype0001.MixProject do
       {:bandit, "~> 1.6.11"},
       {:websock, "~> 0.5"},
       {:websock_adapter, "~> 0.5"},
-      {:req, "~> 0.5.10", only: :test}
+      {:req, "~> 0.5.10", only: :test},
+      {:cabbage, "~> 0.4.1"}
     ]
   end
 end
