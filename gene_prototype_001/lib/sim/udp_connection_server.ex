@@ -21,13 +21,13 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   @impl true
-  def handle_info({:udp, _socket, ip, port, data}, state) do
+  def handle_info({:udp, _socket, ip, port, data, subscribers}, state) do
     IO.puts("HANDLING UDP INFO!! #{inspect(data)}")
     client_string = "#{:inet.ntoa(ip)}:#{port}"
     new_state = case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->
         DirectDebug.extra("Received '#{method}' request from #{client_string} with params: #{inspect(params)}", true)
-        case handle_rpc_call(method, params, state) do
+        case handle_rpc_call(method, Map.merge(params, %{"subscribers" => subscribers}), state) do
           {:noreply, updated_state} -> updated_state
           _ -> state
         end
@@ -35,7 +35,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
         :logger.info("Invalid JSON-RPC request from #{client_string}: #{inspect(data)}")
         state
       {:error, _err} ->
-        :logger.info("Bad packet received from #{client_string}")
+        :logger.info("Bad packet received from #{client_string}: #{inspect(data)}")
         state
       result ->
         :logger.warning("unknown result attempting to decode JSON: #{inspect(result)}")
@@ -44,7 +44,12 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, new_state}
   end
 
-  @impl true
+  def handle_info({:udp, _socket, ip, port, data}, state) do
+    send(self(), {:udp, _socket, ip, port, data, []})
+    {:noreply, state}
+  end
+
+    @impl true
   def handle_info(msg, state) do
     :logger.warning(":SimUdpConnector received unknown message: #{inspect(msg)}")
     {:noreply, state}
@@ -107,7 +112,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   #  ============================== SCENARIO STATE HANDLERS ============================
   defp handle_rpc_call("scenario_started", params, state) do
-    Logger.info("#{__MODULE__} - Scenario started!!: #{inspect(params)}")
+    IO.puts("#{__MODULE__} - Scenario started!!: #{inspect(params)}")
     GenePrototype0001.Sim.ScenarioSupervisor.start_scenario(params)
     {:noreply, %{state | sim_ready: true}}
   end

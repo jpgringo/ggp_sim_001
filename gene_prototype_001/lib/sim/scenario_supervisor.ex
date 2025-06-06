@@ -23,8 +23,18 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
 
   end
 
-  def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents}) do
-    Logger.debug("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}")
+  def foobar(%{"scenario" => scenario_name, "senders" => senders}) do
+    IO.puts("first overload - senders: #{inspect(senders)}")
+  end
+
+  def foobar(%{"scenario" => scenario_name}) do
+    IO.puts("second overload - senders is not defined")
+    foobar(%{"scenario" => scenario_name, "senders" => []})
+  end
+
+
+  def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents, "subscribers" => subscribers}) do
+    :logger.debug("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}")
 
     # Create child spec with proper arguments
     spec = %{
@@ -37,6 +47,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     case DynamicSupervisor.start_child(__MODULE__, spec) do
       {:ok, pid} ->
         Logger.info("Started scenario '#{scenario_name}' with PID #{inspect(pid)}")
+        Enum.each(subscribers, & send(&1, {:scenario_inited, scenario_name, pid}))
         {:ok, pid}
       {:error, reason} = error ->
         Logger.error("Failed to start scenario '#{scenario_name}': #{inspect(reason)}")
@@ -44,8 +55,13 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     end
   end
 
+  def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents}) do
+    start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents, "subscribers" => []})
+  end
+
+  @deprecated
   def start_scenario(scenario_name, params \\ %{}) do
-    Logger.debug("SIM SUPERVISOR: starting scenario '#{scenario_name}' with params #{inspect(params)}")
+    Logger.debug("SIM SUPERVISOR (DEPRECATED?): starting scenario '#{scenario_name}' with params #{inspect(params)}")
 
     # Create child spec with proper arguments
     spec = %{
