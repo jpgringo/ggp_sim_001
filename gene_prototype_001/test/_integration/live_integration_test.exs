@@ -34,7 +34,8 @@ defmodule GenePrototype0001.Bandit.LiveIntegrationTest do
       }
       instantiate_scenario(opts)
       {:ok, scenario_pid} = check_for_scenario(scenario_resource_id, run_id)
-      check_for_onta(scenario_pid, agent_count)
+      {:ok, onta} = check_for_onta(scenario_pid, agent_count)
+      check_all_onta_for_numina(onta)
       {:ok}
     end
   end
@@ -48,7 +49,17 @@ defmodule GenePrototype0001.Bandit.LiveIntegrationTest do
       {:ok, agent_params} = make_agent_params(3,1,true)
       IO.puts("agent_params: #{inspect(agent_params)}")
       send(:SimUdpConnector, {:udp, nil, ip, 7400,
-        "{\"jsonrpc\":\"2.0\",\"method\":\"scenario_started\",\"params\":{\"scenario\":\"#{scenario_name}\",\"unique_id\":\"#{scenario_id}\",\"agents\":#{agent_params}}}",
+        ~s"""
+        {
+          "jsonrpc":"2.0",
+          "method":"scenario_started",
+          "params":{
+            "scenario":"#{scenario_name}",
+            "unique_id":"#{scenario_id}",
+            "agents":#{agent_params}
+          }
+        }
+        """,
         [self()]
       })
 
@@ -134,7 +145,23 @@ defmodule GenePrototype0001.Bandit.LiveIntegrationTest do
   defp check_for_onta(scenario, expected_onta) do
     {:ok, onta} = GenServer.call(scenario, :get_onta)
     assert length(onta) == expected_onta
+    {:ok, onta}
   end
 
+  defp check_all_onta_for_numina(onta_pids, min_numina \\ 1) do
+    Enum.map(onta_pids, fn ontos_pid ->
+      IO.puts("will check Ontos at #{inspect(ontos_pid)}")
+      check_for_numina(ontos_pid, min_numina)
+    end)
+  end
+
+  defp check_for_numina(ontos_pid, min_numina \\ 1) do
+    case GenServer.call(ontos_pid, :get_numina) do
+      {:ok, numina_pids} when length(numina_pids) >= min_numina -> assert true
+      {:ok, numina_pids} ->
+        %{agent_id: agent_id} = GenServer.call(ontos_pid, :get_state)
+        assert false, "#{inspect(agent_id)} expected >= #{min_numina} numina; got #{length(numina_pids)}"
+    end
+  end
 
 end

@@ -76,6 +76,8 @@ defmodule GenePrototype0001.Onta.Ontos do
   def handle_call({:add_numen, numen_module}, _from, state) do
     case GenePrototype0001.Numina.NumenSupervisor.start_numen(state.numen_supervisor, numen_module, state.raw_id) do
       {:ok, pid} ->
+        # storing the pids in a list, as this is the easiest way of maintaining a determinate order
+        # TODO: consider making numina a custom linked list, in which each Numen knows the pid of the next one in the sequence (might be more trouble than its worth)
         new_state = Map.update!(state, :numen_pids, &[pid | &1])
         {:reply, {:ok, pid}, new_state}
       error ->
@@ -92,6 +94,11 @@ defmodule GenePrototype0001.Onta.Ontos do
       error ->
         {:reply, error, state}
     end
+  end
+
+  @impl true
+  def handle_call(:get_numina, _from, state) do
+    {:reply, {:ok, state.numen_pids}, state}
   end
 
 

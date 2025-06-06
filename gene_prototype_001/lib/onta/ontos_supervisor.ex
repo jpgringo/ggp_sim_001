@@ -3,7 +3,7 @@ defmodule GenePrototype0001.Onta.OntosSupervisor do
   require Logger
 
   def start_link(init_args) do
-    Logger.info("Starting Ontos supervisor... init_args: #{inspect(init_args)}")
+    :logger.info("Starting Ontos supervisor... init_args: #{inspect(init_args)}")
     # TODO: this 'dance' around registry names is only necessary until the direct creation of
     #       Onta (i.e., not via Scenarios) is eliminated
     name = case init_args do
