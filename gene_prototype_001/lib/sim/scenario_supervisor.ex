@@ -23,16 +23,6 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
 
   end
 
-  def foobar(%{"scenario" => scenario_name, "senders" => senders}) do
-    IO.puts("first overload - senders: #{inspect(senders)}")
-  end
-
-  def foobar(%{"scenario" => scenario_name}) do
-    IO.puts("second overload - senders is not defined")
-    foobar(%{"scenario" => scenario_name, "senders" => []})
-  end
-
-
   def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents, "subscribers" => subscribers}) do
     :logger.debug("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}")
 
@@ -46,8 +36,16 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
 
     case DynamicSupervisor.start_child(__MODULE__, spec) do
       {:ok, pid} ->
-        Logger.info("Started scenario '#{scenario_name}' with PID #{inspect(pid)}")
-        Enum.each(subscribers, & send(&1, {:scenario_inited, scenario_name, pid}))
+        :logger.info("#{__MODULE__} - Started scenario '#{scenario_name}' with PID #{inspect(pid)}")
+        :logger.info("#{__MODULE__} - subscribers: #{subscribers}")
+        Enum.each(subscribers, fn sub -> send(
+        case sub do
+          s when is_pid(s) -> s
+          s when is_binary(s) -> # for PIDs in JSON payloads during testing
+            Base.decode64!(s) |> :erlang.binary_to_term
+          _ -> nil
+        end,
+                                           {:scenario_inited, scenario_name, pid}) end)
         {:ok, pid}
       {:error, reason} = error ->
         Logger.error("Failed to start scenario '#{scenario_name}': #{inspect(reason)}")
@@ -59,7 +57,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents, "subscribers" => []})
   end
 
-  @deprecated
+  # deprecated
   def start_scenario(scenario_name, params \\ %{}) do
     Logger.debug("SIM SUPERVISOR (DEPRECATED?): starting scenario '#{scenario_name}' with params #{inspect(params)}")
 

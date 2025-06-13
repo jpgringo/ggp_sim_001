@@ -1,0 +1,82 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+skinparam actorStyle Hollow
+
+usecase UCSC_1 as "
+Receive Inbound Messages
+..UCSC_1..
+"
+usecase UCSC_1.1 as "
+Route Inbound Messages
+..UCSC_1.1..
+"
+
+usecase UCSC_1.1.1 as "
+Handle Scenario Events
+..UCSC_1.1.1..
+"
+
+usecase UCSC_1.1.2 as "
+Handle Inbound Sensor Data
+..UCSC_1.1.2..
+"
+
+usecase UCSC_1.1.2.1 #ffeedd;line:red;line.dotted;text:firebrick as "
+Handle Inbound Sensor Data
+(single)
+..UCSC_1.1.2.1..
+not supported
+"
+
+usecase UCSC_1.1.2.2 as "
+Handle Inbound Sensor Data
+(batch)
+..UCSC_1.1.2.2..
+"
+
+usecase UCSC_1.1.2.2.1 as "
+Handle Inbound Sensor Data
+(batch)
+..
+single agent, single sensor
+..UCSC_1.1.2.2.1..
+"
+
+usecase UCSC_1.1.2.2.2 as "
+Handle Inbound Sensor Data
+(batch)
+..
+single agent, multiple sensors
+..UCSC_1.1.2.2.2..
+"
+
+usecase UCSC_1.1.2.2.3 as "
+Handle Inbound Sensor Data
+(batch)
+..
+multiple agents, single sensor
+..UCSC_1.1.2.2.3..
+"
+
+usecase UCSC_1.1.2.2.4 as "
+Handle Inbound Sensor Data
+(batch)
+..
+multiple agents, multiple sensors
+..UCSC_1.1.2.2.4..
+"
+
+:sim_connector: << boundary component >>
+:sim_connector: --> UCSC_1
+UCSC_1 <.. UCSC_1.1
+UCSC_1.1 <.. UCSC_1.1.1
+UCSC_1.1 <.. UCSC_1.1.2
+UCSC_1.1.2 <.. UCSC_1.1.2.1
+UCSC_1.1.2 <.. UCSC_1.1.2.2
+UCSC_1.1.2.2 <.. UCSC_1.1.2.2.1
+UCSC_1.1.2.2 <.. UCSC_1.1.2.2.2
+UCSC_1.1.2.2 <.. UCSC_1.1.2.2.3
+UCSC_1.1.2.2 <.. UCSC_1.1.2.2.4
+
+@enduml

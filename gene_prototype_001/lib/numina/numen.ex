@@ -52,8 +52,10 @@ defmodule GenePrototype0001.Numina.Numen do
       def handle_cast({:process_sensor_data_set, sensor_data}, state) do
         case sensor_data_updated_new(sensor_data, state) do
           {:ok, new_state, []} ->
+            DirectDebug.extra("Numen for Ontos #{inspect(state.agent_id)} - will do nothing")
             {:noreply, new_state}
           {:ok, new_state, commands} when is_list(commands) ->
+            DirectDebug.extra("Numen sending numen commands back to Ontos #{inspect(state.agent_id)}")
             # Send commands back to the Ontos
             send(state.ontos_pid, {:numen_commands, commands})
             {:noreply, new_state}

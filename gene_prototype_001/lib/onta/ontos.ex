@@ -105,6 +105,7 @@ defmodule GenePrototype0001.Onta.Ontos do
   def process_incoming_sensor_set(sensor_data_set, state) do
     # TODO: if local state updates happen at all, they should happen separately from the processing
     # TODO: ACTUALLY… the way this is architected is messed up. Should be a `call`
+    DirectDebug.extra("Ontos - processing incoming sensor set. sensor_data_set: #{inspect(sensor_data_set)}")
     # Notify all Numina
     Enum.each(state.numen_pids, fn pid ->
       GenServer.cast(pid, {:process_sensor_data_set, sensor_data_set})
@@ -133,11 +134,26 @@ defmodule GenePrototype0001.Onta.Ontos do
 
   @impl true
   def handle_cast({:sensor_batch, sensor_data_list}, state) do
-    DirectDebug.info("Ontos #{state.agent_id} received sensor batch: #{inspect(sensor_data_list)}")
+    handle_cast({:sensor_batch, sensor_data_list, []}, state)
+  end
+
+  @impl true
+  def handle_cast({:sensor_batch, sensor_data_list, subscribers}, state) do
+    DirectDebug.info("Ontos #{state.agent_id} received sensor batch: #{inspect(sensor_data_list)}; subscribers: #{inspect(subscribers)}")
     preprocessed_input = preprocess_data_batch(sensor_data_list)
     DirectDebug.extra("#{state.agent_id} - preprocessed sensor batch: #{inspect(preprocessed_input)}")
 
     process_incoming_sensor_set(preprocessed_input, state)
+
+#    Enum.each(subscribers, fn sub -> send(
+#         case sub do
+#           s when is_pid(s) -> s
+#           s when is_binary(s) -> # for PIDs in JSON payloads during testing
+#             Base.decode64!(s) |> :erlang.binary_to_term
+#           _ -> nil
+#         end,
+#         {:sensor_set_processed, {state.agent_id, self()}}) end)
+
 
     {:noreply, state}
   end
@@ -164,11 +180,11 @@ defmodule GenePrototype0001.Onta.Ontos do
     Enum.each(commands, fn command ->
       case command do
         {:actuator_data, payload} ->
+          DirectDebug.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
           GenServer.call(:SimUdpConnector, {:send_actuator_data,
             state.raw_id,
             payload}
           )
-          DirectDebug.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
         _ ->
           Logger.warning("Ontos #{state.agent_id} received unknown command: #{inspect(command)}")
       end
@@ -204,26 +220,40 @@ defmodule GenePrototype0001.Onta.Ontos do
     :ets.tab2list(table)
   end
 
+  def isolate_and_average_grouped_data_batch(grouped_data) do
+    DirectDebug.extra("isolating and averaging grouped data batch: #{inspect(grouped_data)}")
+    foo = Enum.map(grouped_data, fn {sensor_id, vals} ->
+      DirectDebug.extra("sensor_id=#{sensor_id}, vals: #{inspect(vals)}")
+      vals_only = vals |> Enum.map(fn [_, vector] -> vector end)
+      DirectDebug.extra("vals_only: #{inspect(vals_only)}")
+      pivot = vals_only |> Enum.zip_with(& &1)
+      DirectDebug.extra("pivot: #{inspect(pivot)}")
+      avg = pivot |> Enum.map(&(Enum.sum(&1) / length(&1)))
+      DirectDebug.extra("avg: #{inspect(avg)}")
+      [sensor_id,
+        vals
+        # grab just the values from each input
+        |> Enum.map(fn [_, vector] -> vector end)
+          # 'pivot' the vector collection so all each column is grouped together
+        |> Enum.zip_with(& &1)
+          # get the average of each  pivoted column
+        |> Enum.map(&(Enum.sum(&1) / length(&1)))
+      ]
+    end)
+    IO.puts("foo: #{inspect(foo)}")
+    foo
+  end
+
   def preprocess_data_batch(sensor_data_list) do
+    DirectDebug.extra("Ontos processing data batch: #{inspect(sensor_data_list)}")
     # bin the data by sensor id
     grouped_data = sensor_data_list |> Enum.group_by(fn [id, _] -> id end)
+    DirectDebug.extra("grouped_data: #{inspect(grouped_data)}")
+
     # average each sensor; this is just one way to summarize a batch. It may be more relevant
     # to grab the most recent entry for each sensor only (but ultimately for the algorithm to
     # decide? Should this functionality evolve also?)
-    vector_set = Enum.map(grouped_data, fn {sensor_id, vals} ->
-      # we're effectively discarding the individual sensor_id value from each input,
-      # but given the way we grouped the data above, we can trust the map key as the input sensor id
-      [sensor_id,
-         vals
-           # grab just the values from each input
-           |> Enum.map(fn [_, vector] -> vector end)
-           # 'pivot' the vector collection so all each column is grouped together
-           |> Enum.zip_with(& &1)
-           # get the average of each  pivoted column
-           |> Enum.map(&(Enum.sum(&1) / length(&1)))
-      ]
-    end)
-    vector_set
+    isolate_and_average_grouped_data_batch(grouped_data)
   end
 
   @impl true

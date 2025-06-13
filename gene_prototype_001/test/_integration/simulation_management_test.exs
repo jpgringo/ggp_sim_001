@@ -1,4 +1,4 @@
-defmodule GenePrototype0001.Bandit.LiveIntegrationTest do
+defmodule GenePrototype0001.Test.SimulationManagement do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
   import ExUnit.CaptureIO
@@ -155,7 +155,7 @@ defmodule GenePrototype0001.Bandit.LiveIntegrationTest do
     end)
   end
 
-  defp check_for_numina(ontos_pid, min_numina \\ 1) do
+  defp check_for_numina(ontos_pid, min_numina) do
     case GenServer.call(ontos_pid, :get_numina) do
       {:ok, numina_pids} when length(numina_pids) >= min_numina -> assert true
       {:ok, numina_pids} ->

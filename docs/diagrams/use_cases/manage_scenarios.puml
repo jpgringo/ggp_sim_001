@@ -1,0 +1,34 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+User -> (Manage Scenarios)
+
+note right of (Manage Scenarios)
+Scenarios are currently
+managed manually as
+JSON files, available to
+the sim, but not directly
+to the server
+end note
+
+usecase RS as "Run Scenarios"
+
+usecase RS01 as "Start Scenario
+==
+Only one scenario
+can be run at a time"
+
+usecase RS02 as "Stop Scenario"
+
+usecase RS03 as "Stop All Scenarios
+--
+‘Panic!’
+"
+
+RS <.. RS01
+RS <.. RS02
+RS <.. RS03
+
+User --> RS
+
+@enduml

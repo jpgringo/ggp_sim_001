@@ -48,15 +48,20 @@ defmodule GenePrototype0001.Sim.Scenario do
 
   @impl true
   def handle_cast({:sensor_batch, batch}, state) do
-    DirectDebug.info("#{state.name} received :sensor_batch: #{inspect(batch)}")
+    handle_cast({:sensor_batch, batch, []}, state)
+  end
+
+  @impl true
+  def handle_cast({:sensor_batch, batch, subscribers}, state) do
+    DirectDebug.info("#{state.name} received :sensor_batch: #{inspect(batch)}; subscribers: #{inspect(subscribers)}")
     group_by_agent(batch)
     |> Enum.each(fn %{"agent" => agent, "events" => events} ->
       agent_id = "#{state.id}_#{agent}"
-      DirectDebug.info("Would send event batch to agent '#{inspect(agent_id)}': #{inspect(events)}")
+      DirectDebug.info("Scenario '#{state.id}' will send event batch to ontos #{inspect(agent_id)}: #{inspect(events)}")
       case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
         [{pid, _}] ->
           DirectDebug.info("Found Ontos #{inspect(pid)}")
-          GenServer.cast(pid, {:sensor_batch, events})
+          GenServer.cast(pid, {:sensor_batch, events, subscribers})
         [] ->
           DirectDebug.warning("Could NOT find agent #{agent_id}")
       end

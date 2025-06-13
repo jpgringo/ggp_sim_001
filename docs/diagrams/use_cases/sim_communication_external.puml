@@ -1,0 +1,21 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+skinparam actorStyle Hollow
+
+sim << external app >>
+
+usecase RC  as "Receive Commands"
+usecase START as "Start Scenario"
+usecase STOP as "Stop Scenario"
+usecase STOP_ALL as "Stop All Scenarios
+---
+‘Panic!’"
+RC <.. START
+RC <.. STOP
+RC <.. STOP_ALL
+:sim: --> RC
+:sim: --> (Send Sensor Data)
+:sim: --> (Receive Actuator Data)
+
+@enduml

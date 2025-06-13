@@ -3,10 +3,11 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   require Logger
   require DirectDebug
 
+  @sim_connector_name :SimUdpConnector
+
   def start_link(opts) do
     Logger.info("Starting UDP server...")
-    name = :SimUdpConnector
-    GenServer.start_link(__MODULE__, Keyword.put(opts, :name, name), name: name)
+    GenServer.start_link(__MODULE__, opts, name: @sim_connector_name)
   end
 
   @impl true
@@ -14,20 +15,20 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     send_ip = Keyword.get(opts, :send_ip, "127.0.0.1")
     send_port = Keyword.get(opts, :send_port, 7401)
     receive_port = Keyword.fetch!(opts, :receive_port)
-    name = Keyword.fetch!(opts, :name)
+    name = @sim_connector_name
     {:ok, socket} = :gen_udp.open(receive_port, [:binary, active: true, reuseaddr: true])
-    Logger.info("#{name} - UDP server listening on port #{receive_port}")
+    DirectDebug.info("#{name} - UDP server listening on port #{receive_port}")
     {:ok, %{name: name, socket: socket, receive_port: receive_port, send_ip: send_ip, send_port: send_port, sim_ready: false}}
   end
 
   @impl true
   def handle_info({:udp, _socket, ip, port, data, subscribers}, state) do
-    IO.puts("HANDLING UDP INFO!! #{inspect(data)}")
+    DirectDebug.info("#{@sim_connector_name} - HANDLING UDP INFO!! #{inspect(data)}}")
     client_string = "#{:inet.ntoa(ip)}:#{port}"
     new_state = case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->
-        DirectDebug.extra("Received '#{method}' request from #{client_string} with params: #{inspect(params)}", true)
-        case handle_rpc_call(method, Map.merge(params, %{"subscribers" => subscribers}), state) do
+        DirectDebug.info("#{@sim_connector_name} - Received '#{method}' request from #{client_string} with params: #{inspect(params)}", true)
+        case handle_rpc_call(method, Map.merge(%{"subscribers" => subscribers}, params), state) do
           {:noreply, updated_state} -> updated_state
           _ -> state
         end
@@ -44,8 +45,8 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, new_state}
   end
 
-  def handle_info({:udp, _socket, ip, port, data}, state) do
-    send(self(), {:udp, _socket, ip, port, data, []})
+  def handle_info({:udp, socket, ip, port, data}, state) do
+    send(self(), {:udp, socket, ip, port, data, []})
     {:noreply, state}
   end
 
@@ -70,6 +71,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
         "data" => data
       }
     })
+    DirectDebug.info(":SimUdpConnector - :send_actuator_data. ip=#{send_ip}; port=#{send_port}; notification: #{inspect(notification)}")
     :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
     {:reply, :ok, state}
   end
@@ -112,7 +114,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   #  ============================== SCENARIO STATE HANDLERS ============================
   defp handle_rpc_call("scenario_started", params, state) do
-    IO.puts("#{__MODULE__} - Scenario started!!: #{inspect(params)}")
+    DirectDebug.info("#{@sim_connector_name} - Handling scenario started!!: #{inspect(params)}")
     GenePrototype0001.Sim.ScenarioSupervisor.start_scenario(params)
     {:noreply, %{state | sim_ready: true}}
   end
@@ -160,13 +162,15 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     # Forward batch to WebSocket clients
     GenePrototype0001.SimulationSocket.broadcast_batch(batch)
 
-    group_by_scenario(batch)
+    subscribers = Map.get(batch, "subscribers", [])
+
+    group_by_scenario(batch["sensor_data"])
     |> Enum.each(fn scenario ->
       DirectDebug.extra("#{state.name} - extracted data from batch for scenario '#{inspect(scenario)}'")
       case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario["scenario"]) do
         [{pid, _}] ->
           DirectDebug.extra("#{state.name} - found scenario (#{inspect(pid)})")
-          GenServer.cast(pid, {:sensor_batch, scenario["entries"]})
+          GenServer.cast(pid, {:sensor_batch, scenario["entries"], subscribers})
         [] ->
           DirectDebug.warning("Received sensor data for unknown scenario #{scenario["scenario"]}", true)
       end

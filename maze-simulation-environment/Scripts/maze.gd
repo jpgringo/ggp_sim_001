@@ -280,5 +280,5 @@ func _handle_event(event):
 
 func _transmit_event_batch():
 	print("will transmit batch with %d messages" % event_queue.size(), event_queue)
-	Global.transmit("batch", event_queue)
+	Global.transmit("batch", {"sensor_data": event_queue})
 	event_queue.clear()

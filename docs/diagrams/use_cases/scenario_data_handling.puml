@@ -1,0 +1,60 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+' left to right direction
+skinparam actorStyle Hollow
+
+usecase UCSDH_1 as "
+Route Sensor Data
+to Scenarios
+..UCSDH_1..
+"
+
+usecase UCSDH_2 as "
+Route Sensor Data
+to Onta
+..UCSDH_2..
+"
+usecase UCSDH_1.1 as "
+Route Inbound Messages
+..UCSDH_1.1..
+"
+
+usecase UCSDH_1.1.1 as "
+Handle Scenario Events
+..UCSDH_1.1.1..
+"
+
+usecase UCSDH_1.1.2 as "
+Handle Inbound Sensor Data
+..UCSDH_1.1.2..
+"
+
+usecase UCSDH_1.1.2.1 #ffeedd;line:red;line.dotted;text:firebrick as "
+Handle Inbound Sensor Data
+(single)
+..UCSDH_1.1.2.1..
+not supported
+"
+
+usecase UCSDH_1.1.2.2 as "
+Handle Inbound Sensor Data
+(batch)
+..UCSDH_1.1.2.2..
+"
+
+:sim_connector: << boundary component >>
+:sim_connector: --> UCSDH_1
+UCSDH_1 <.. UCSDH_1.1
+UCSDH_1.1 <.. UCSDH_1.1.1
+UCSDH_1.1 <.. UCSDH_1.1.2
+UCSDH_1.1.2 <.. UCSDH_1.1.2.1
+UCSDH_1.1.2 <.. UCSDH_1.1.2.2
+
+:scenario:
+:scenario: <-- UCSDH_2
+:ontos:
+
+:numen:
+
+@enduml

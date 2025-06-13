@@ -1,0 +1,40 @@
+= Gene Sim - Prototype 001
+
+== Use cases
+
+=== Managing Scenarios
+
+[plantuml, manage-scenario-diagram, svg]
+----
+include::diagrams/use_cases/manage_scenarios.puml/[]
+----
+
+=== Communicating with Sims
+
+==== External Sim
+[plantuml, sim-communication-external-diagram, svg]
+----
+include::diagrams/use_cases/sim_communication_external.puml[]
+----
+
+==== Internal sim connector (`UDPConnectionServer`)
+[plantuml, sim-communication-connector-diagram, svg]
+----
+include::diagrams/use_cases/sim_communication_connector.puml[]
+----
+. Receive Inbound Messages
+  .. Route Inbound messages
+     ... Handle Scenario Events
+     ... Handle Inbound Sensor Data
+         .... Handle Inbound Sensor Data (single)
+         .... Handle Inbound Sensor Data (batch)
+              ..... single agent, single sensor
+              ..... single agent, multiple sensors
+              ..... multiple agents, single sensor
+              ..... multiple agents, multiple sensors
+
+=== Scenario Data Handling
+[plantuml, scenario-data-handling-diagram, svg]
+----
+include::diagrams/use_cases/scenario_data_handling.puml[]
+----
