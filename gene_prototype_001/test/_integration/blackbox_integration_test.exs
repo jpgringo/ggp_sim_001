@@ -19,20 +19,18 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
 
 
     test_sim_pid = start_supervised!({TestingSimulator, opts})
-    IO.puts("\n\n============\ntest_sim_pid#{inspect(test_sim_pid)}\n==============\n")
     {:ok, %{test_sim: test_sim_pid}}
   end
 
   setup do
-    IO.puts("\n\n================\n\nsetup *SELF* #{inspect(self())}\n\n=================\n\n")
     :ok
   end
 
 
   describe "data in to data out" do
     @tag :focus
-    test "check for basic functionality", state do
-      DirectDebug.info("starting 'check for basic functionality': #{inspect(state)}")
+    test "check for basic functionality", _state do
+      DirectDebug.info("starting 'check for basic functionality'...")
       resource_id = Nanoid.generate(8, @alphabet)
       run_id = Nanoid.generate(8, @alphabet)
       agent_ids = ["A"]
@@ -44,31 +42,28 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
       actuator_number = 0
 
       # send a sensor data batch
-      resp = GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, [{"A", [0, [0, 0, 0]]}], [encoded_pid]})
-      DirectDebug.info("got the response: #{inspect(resp)}")
+      GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, [{"A", [0, [0, 0, 0]]}], [encoded_pid]})
 
       # wait for an acknowledgment that it's started
       scenario_timeout = 3000
       receive do
-          {:actuator_data, params} -> DirectDebug.extra("got actuator data - success")
-          case params do
-            %{"agent" => agent, "data" => data} ->
-              assert agent == "A"
-              case data do
-                [actuator, [v1, v2]] ->
-                  assert actuator == actuator_number
-                  assert v1 != 0
-                  assert v2 != 0
-              end
-          end
+          {:actuator_data, params} ->
+            case params do
+              %{"agent" => agent, "data" => data} ->
+                assert agent == "A"
+                case data do
+                  [actuator, [v1, v2]] ->
+                    assert actuator == actuator_number
+                    assert v1 != 0
+                    assert v2 != 0
+                end
+            end
           msg -> DirectDebug.warning("received: #{inspect(msg)}")
       after
         scenario_timeout ->
           :timeout
           assert false, "scenario not created within #{scenario_timeout}ms"
       end
-
-      assert resp == :ok
     end
 
     test "complex data set", state do
@@ -81,28 +76,26 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
     end
   end
 
-  def start_scenario(resource_id, run_id, agent_ids, actuators) do
+  def start_scenario(_resource_id, run_id, agent_ids, actuators) do
     encoded_pid = self() |> :erlang.term_to_binary() |> Base.encode64()
 
     agents = Enum.map(agent_ids, & %{id: &1, actuators: actuators})
 
     DirectDebug.extra("agents: #{inspect(agents)}")
     # first, tell the sim to start the scenario
-    resp = GenServer.call(:TestingSimulator,
+    GenServer.call(:TestingSimulator,
       {:initiate_scenario_run,
         %{resource_id: Nanoid.generate(8, @alphabet),
           run_id: run_id,
           agents: agents,
           subscribers: [encoded_pid]
         }})
-    DirectDebug.info("resp: #{inspect(resp)}")
 
     # wait for an acknowledgment that it's started
     scenario_timeout = 3000
     receive do
-      _ -> IO.puts("WHAT THE ACTUAL FUCK!!")
-      # The message will really be this `{:scenario_inited, _scenario_name, _pid} -> :ok`, but really any message at all is fine
-      {:noreply, :ok}
+      _ -> # The message will really be this `{:scenario_inited, _scenario_name, _pid} -> :ok`, but really any message at all is fine
+        {:noreply, :ok}
     after
       scenario_timeout ->
         :timeout
@@ -116,6 +109,7 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
 
   def handle_info(msg, state) do
     DirectDebug.warning("unknown message: #{inspect(msg)}")
+    {:noreply, state}
   end
 end
 

@@ -60,7 +60,7 @@ defmodule GenePrototype0001.Sim.Scenario do
       DirectDebug.info("Scenario '#{state.id}' will send event batch to ontos #{inspect(agent_id)}: #{inspect(events)}")
       case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
         [{pid, _}] ->
-          DirectDebug.info("Found Ontos #{inspect(pid)}")
+          DirectDebug.extra("Found Ontos #{inspect(pid)}")
           GenServer.cast(pid, {:sensor_batch, events, subscribers})
         [] ->
           DirectDebug.warning("Could NOT find agent #{agent_id}")

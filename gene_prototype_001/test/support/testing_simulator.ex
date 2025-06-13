@@ -7,13 +7,12 @@ defmodule TestingSimulator do
   @testing_simulator_name :TestingSimulator
 
   def start_link(opts) do
-    DirectDebug.info("TestingSimulator starting: #{inspect(opts)}")
     GenServer.start_link(__MODULE__, opts, name: @testing_simulator_name)
   end
 
   @impl true
   def init(init_args) do
-    DirectDebug.info("Testing Simulator starting with args #{inspect(init_args)}")
+    DirectDebug.info("initing Testing Simulator starting with args #{inspect(init_args)}...")
     socket = case :gen_udp.open(init_args.receive_port, [:binary, active: true, reuseaddr: true]) do
       {:ok, socket} ->
         DirectDebug.info("Testing Simulator listening on socket #{inspect(Port.info(socket))}")
@@ -74,10 +73,7 @@ defmodule TestingSimulator do
   end
 
   @impl true
-  def handle_call(
-        {:send_sensor_data_batch, run_id, data} = msg,
-        from,
-        state = %{socket: socket, send_ip: send_ip, send_port: send_port}) do
+  def handle_call({:send_sensor_data_batch, run_id, data}, from, state) do
     DirectDebug.extra("TestingSimulator received send_sensor_data_batch message WITH NO SUBSCRIBERS!!: #{inspect(run_id)}-#{inspect(data)}")
     handle_call({:send_sensor_data_batch, run_id, data, []}, from, state)
   end
@@ -113,10 +109,9 @@ defmodule TestingSimulator do
   end
 
   @impl true
-  def handle_info({:udp, _socket, ip, port, data}, state) do
+  def handle_info({:udp, _socket, _ip, _port, data}, state) do
     DirectDebug.info("TestingSimulator received udp packet: #{inspect(data)}")
     [first_subscriber | remaining_subscribers] = state.subscribers
-    DirectDebug.extra("first_subscriber: #{inspect(first_subscriber)}")
     case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->
       case method do

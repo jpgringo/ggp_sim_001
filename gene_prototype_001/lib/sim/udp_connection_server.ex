@@ -23,7 +23,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   @impl true
   def handle_info({:udp, _socket, ip, port, data, subscribers}, state) do
-    DirectDebug.info("#{@sim_connector_name} - HANDLING UDP INFO!! #{inspect(data)}}")
+    DirectDebug.extra("#{@sim_connector_name} - HANDLING UDP INFO!! #{inspect(data)}}")
     client_string = "#{:inet.ntoa(ip)}:#{port}"
     new_state = case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->

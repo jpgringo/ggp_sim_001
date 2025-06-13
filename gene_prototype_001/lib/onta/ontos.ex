@@ -222,14 +222,7 @@ defmodule GenePrototype0001.Onta.Ontos do
 
   def isolate_and_average_grouped_data_batch(grouped_data) do
     DirectDebug.extra("isolating and averaging grouped data batch: #{inspect(grouped_data)}")
-    foo = Enum.map(grouped_data, fn {sensor_id, vals} ->
-      DirectDebug.extra("sensor_id=#{sensor_id}, vals: #{inspect(vals)}")
-      vals_only = vals |> Enum.map(fn [_, vector] -> vector end)
-      DirectDebug.extra("vals_only: #{inspect(vals_only)}")
-      pivot = vals_only |> Enum.zip_with(& &1)
-      DirectDebug.extra("pivot: #{inspect(pivot)}")
-      avg = pivot |> Enum.map(&(Enum.sum(&1) / length(&1)))
-      DirectDebug.extra("avg: #{inspect(avg)}")
+    Enum.map(grouped_data, fn {sensor_id, vals} ->
       [sensor_id,
         vals
         # grab just the values from each input
@@ -240,15 +233,12 @@ defmodule GenePrototype0001.Onta.Ontos do
         |> Enum.map(&(Enum.sum(&1) / length(&1)))
       ]
     end)
-    IO.puts("foo: #{inspect(foo)}")
-    foo
   end
 
   def preprocess_data_batch(sensor_data_list) do
     DirectDebug.extra("Ontos processing data batch: #{inspect(sensor_data_list)}")
     # bin the data by sensor id
     grouped_data = sensor_data_list |> Enum.group_by(fn [id, _] -> id end)
-    DirectDebug.extra("grouped_data: #{inspect(grouped_data)}")
 
     # average each sensor; this is just one way to summarize a batch. It may be more relevant
     # to grab the most recent entry for each sensor only (but ultimately for the algorithm to

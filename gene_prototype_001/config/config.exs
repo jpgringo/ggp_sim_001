@@ -6,7 +6,7 @@ config :gene_prototype_0001,
   receive_port: 7400,
   send_ip: "127.0.0.1",
   send_port: 7401,
-  direct_log_level: :all
+  direct_log_level: :info
 
 config :logger,
   level: :warning,
