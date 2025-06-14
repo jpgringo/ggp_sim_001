@@ -135,15 +135,15 @@ defmodule GenePrototype0001.Numina.BasicMotionNumen do
     {:ok, state, [{:actuator_data, [0, random_values]}]}
   end
 
-  defp handle_velocity(values, state) do
-    # Non-zero velocity, let it continue
-    DirectDebug.info("BasicMotionNumen #{state.agent_id} moving with velocity: #{inspect(values)}")
-    {:ok, state, []}
-  end
-
   defp handle_velocity(:not_found, state) do
     # No velocity data yet
     DirectDebug.info("BasicMotionNumen #{state.agent_id} - velocity data not found}")
+    {:ok, state, []}
+  end
+
+  defp handle_velocity(values, state) do
+    # Non-zero velocity, let it continue
+    DirectDebug.info("BasicMotionNumen #{state.agent_id} moving with velocity: #{inspect(values)}")
     {:ok, state, []}
   end
 end

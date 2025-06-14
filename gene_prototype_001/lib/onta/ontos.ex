@@ -115,23 +115,6 @@ defmodule GenePrototype0001.Onta.Ontos do
   end
 
 
-  # there is an asynchronous version below
-  def process_incoming_sensor_datum([sensor_id, values], state) do
-    # Store sensor data
-    new_state = update_sensor_data(state, sensor_id, values)
-
-    # Get current sensor data and notify all Numina
-    data = get_all_sensor_data(new_state.sensor_table)
-    Enum.each(new_state.numen_pids, fn pid ->
-      GenServer.cast(pid, {:process_sensor_data, data})
-    end)
-
-    Logger.debug("Ontos #{state.agent_id} received sensor data: #{inspect([sensor_id, values])}")
-    {:noreply, :ok, new_state}
-  end
-
-
-
   @impl true
   def handle_cast({:sensor_batch, sensor_data_list}, state) do
     handle_cast({:sensor_batch, sensor_data_list, []}, state)
@@ -145,20 +128,9 @@ defmodule GenePrototype0001.Onta.Ontos do
 
     process_incoming_sensor_set(preprocessed_input, state)
 
-#    Enum.each(subscribers, fn sub -> send(
-#         case sub do
-#           s when is_pid(s) -> s
-#           s when is_binary(s) -> # for PIDs in JSON payloads during testing
-#             Base.decode64!(s) |> :erlang.binary_to_term
-#           _ -> nil
-#         end,
-#         {:sensor_set_processed, {state.agent_id, self()}}) end)
-
-
     {:noreply, state}
   end
 
-  # there is a synchronous version above
   @impl true
   def handle_cast({:sensor_data, [sensor_id, values]}, state) do
     # Store sensor data
