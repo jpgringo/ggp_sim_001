@@ -93,7 +93,7 @@ defmodule TestingSimulator do
         sensor_data: Enum.map(data, fn {agent, sensor_data} ->
           %{scenario: run_id, agent: agent, data: sensor_data}
         end),
-      subscribers: [encoded_pid | subscribers]
+        subscribers: [encoded_pid | subscribers]
       },
     })
 

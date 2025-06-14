@@ -4,6 +4,9 @@ defmodule GenePrototype0001.Test.OntaUnits do
   #  import ExUnit.CaptureIO
   require DirectDebug
 
+  @tag :onta
+  @tag :unit
+
   alias GenePrototype0001.Onta.Ontos
 
 #  alias GenePrototype0001.Test.TestSupport
