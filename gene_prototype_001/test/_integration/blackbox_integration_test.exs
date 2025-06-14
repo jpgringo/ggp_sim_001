@@ -44,25 +44,23 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
       # send a sensor data batch
       GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, [{"A", [0, [0, 0, 0]]}], [encoded_pid]})
 
-      # wait for an acknowledgment that it's started
-      scenario_timeout = 3000
-      receive do
-          {:actuator_data, params} ->
-            case params do
-              %{"agent" => agent, "data" => data} ->
-                assert agent == "A"
-                case data do
-                  [actuator, [v1, v2]] ->
-                    assert actuator == actuator_number
-                    assert v1 != 0
-                    assert v2 != 0
-                end
-            end
-          msg -> DirectDebug.warning("received: #{inspect(msg)}")
-      after
-        scenario_timeout ->
-          :timeout
-          assert false, "scenario not created within #{scenario_timeout}ms"
+      # wait for a confirmation that the resultant actuator response has been received by the testing sim...
+      confirmation_data = wait_for_confirmation(fn
+          {:actuator_data, params} -> params
+          msg -> {:error, msg}
+      end, "actuator response not received")
+
+      # and validate the actual message received
+      case confirmation_data do
+        %{"agent" => agent, "data" => data} ->
+          assert agent == "A"
+          case data do
+            [actuator, [v1, v2]] ->
+              assert actuator == actuator_number
+              assert v1 != 0
+              assert v2 != 0
+          end
+        {:error, msg} -> DirectDebug.error("bad confirmation response: #{inspect(msg)}")
       end
     end
 
@@ -73,6 +71,16 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
       agent_ids = ["A", "B", "C", "D"]
       start_scenario(resource_id, run_id, agent_ids, 1)
       assert true
+    end
+  end
+
+  def wait_for_confirmation(evaluation_func, failure_msg \\ "confirmation not received", timeout \\ 3000) do
+    receive do
+      msg -> evaluation_func.(msg)
+    after
+      timeout ->
+        :timeout
+        assert false, "#{failure_msg} within #{timeout}ms"
     end
   end
 
@@ -91,16 +99,16 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
           subscribers: [encoded_pid]
         }})
 
-    # wait for an acknowledgment that it's started
-    scenario_timeout = 3000
-    receive do
-      _ -> # The message will really be this `{:scenario_inited, _scenario_name, _pid} -> :ok`, but really any message at all is fine
-        {:noreply, :ok}
-    after
-      scenario_timeout ->
-        :timeout
-        assert false, "scenario not created within #{scenario_timeout}ms"
-    end
+    wait_for_confirmation(fn msg ->
+      case msg do
+        {:scenario_inited, run_id, pid} -> DirectDebug.info("scenario '#{run_id} inited at #{inspect(pid)}")
+        msg ->
+          DirectDebug.info("Blackbox received unknown confirmation message: #{inspect(msg)}")
+          assert false
+          {:noreply, :ok}
+      end
+    end, "scenario not created")
+
 
     DirectDebug.warning("Made it past the initialized scenario!!")
 
