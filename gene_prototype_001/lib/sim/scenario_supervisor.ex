@@ -37,7 +37,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     case DynamicSupervisor.start_child(__MODULE__, spec) do
       {:ok, pid} ->
         :logger.info("#{__MODULE__} - Started scenario '#{scenario_name}' with PID #{inspect(pid)}")
-        :logger.info("#{__MODULE__} - subscribers: #{subscribers}")
+        :logger.info("#{__MODULE__} - subscribers: #{inspect(subscribers)}")
         Enum.each(subscribers, fn sub -> send(
         case sub do
           s when is_pid(s) -> s
