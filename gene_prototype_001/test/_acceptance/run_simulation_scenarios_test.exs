@@ -1,4 +1,4 @@
-defmodule GenePrototype0001.Test.BlackboxIntegration do
+defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
   use ExUnit.Case, async: false
 #  import ExUnit.CaptureLog
 #  import ExUnit.CaptureIO
@@ -16,7 +16,9 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
       receive_port: Application.get_env(:gene_prototype_0001, :send_port, 7401)
     }
 
+    :pg.start_link()
     test_sim_pid = start_supervised!({TestingSimulator, opts})
+
     {:ok, %{test_sim: test_sim_pid}}
   end
 
@@ -47,7 +49,10 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
     @tag :focus
     # implements: UCSC_1.1.2.2.1
     test "check for basic functionality - single agent, single sensor, single event", _state do
-      DirectDebug.info("starting 'check for basic functionality'...")
+      DirectDebug.section("starting 'check for basic functionality'...")
+
+      :pg.join(:scenario_events, self())
+
       resource_id = TestSupport.make_resource_id()
       run_id = TestSupport.make_run_id()
       agent_ids = ["A"]
@@ -85,11 +90,11 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
       # wait for a confirmation that the resultant actuator response has been received by the testing sim (or no response has been generated)...
       evaluation_func = case expected_message do
         :actuator_data -> fn
-                            {:actuator_data, params} -> params
+                            {:actuator_data, params} -> {:ok, params}
                             msg -> {:error, msg}
                           end
         :no_action -> fn
-                        :no_action -> :no_action
+                        :no_action -> {:ok, :no_action}
                         msg -> {:error, msg}
                       end
       end
@@ -107,7 +112,11 @@ defmodule GenePrototype0001.Test.BlackboxIntegration do
     end
 
     test "complex data set", state do
-      DirectDebug.info("starting 'complex data set': #{inspect(state)}")
+      DirectDebug.section("starting 'complex data set'")
+      DirectDebug.extra("'complex data set' - state: #{inspect(state)}")
+
+      :pg.join(:scenario_events, self())
+
       resource_id = TestSupport.make_resource_id()
       run_id = TestSupport.make_run_id()
       agent_ids = ["A", "B", "C", "D"]

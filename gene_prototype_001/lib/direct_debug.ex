@@ -1,4 +1,11 @@
 defmodule DirectDebug do
+  @moduledoc """
+  Support module to support synchronous log output for debugging/testing.
+
+  ANSI colour data is based on the information on this page:
+  https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences
+  """
+
   def ansi_wrap(text, codes) when is_list(codes) do
     "\e[#{Enum.join(codes, ";")}m#{text}\e[0m"
   end
@@ -14,6 +21,15 @@ defmodule DirectDebug do
     end
     if alsoLog? do
       :logger.debug(text)
+    end
+  end
+
+  def section(text, alsoLog? \\ false) do
+    if Application.get_env(:gene_prototype_0001, :direct_log_level, :none) in [:info, :all] do
+      IO.puts(ansi_wrap("[--SECTION--] >> #{String.upcase(text)}", [1, 4, 38, 5, 39]))
+    end
+    if alsoLog? do
+      :logger.info(text)
     end
   end
 

@@ -37,28 +37,17 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     case DynamicSupervisor.start_child(__MODULE__, spec) do
       {:ok, pid} ->
         :logger.info("#{__MODULE__} - Started scenario '#{scenario_name}' with PID #{inspect(pid)}")
-        :logger.info("#{__MODULE__} - subscribers: #{inspect(subscribers)}")
         case Process.whereis(:pg) do
-          nil ->
-            Enum.each(subscribers, fn sub -> send(
-            case sub do
-              s when is_pid(s) -> s
-              s when is_binary(s) -> # for PIDs in JSON payloads during testing
-                Base.decode64!(s) |> :erlang.binary_to_term
-              _ -> nil
-            end,
-            {:scenario_inited, scenario_name, pid}) end)
-          _ -> Enum.each(:pg.get_members(:scenario_events), & send(&1, {:scenario_inited, %{resource_id: scenario_name, run_id: unique_id, pid: pid}}))
+          nil -> :ok
+          _ ->
+            DirectDebug.warning("ScenarioSupervisor - will notify members: #{inspect(:pg.get_members(:scenario_events))}")
+            Enum.each(:pg.get_members(:scenario_events), & send(&1, {:scenario_inited, %{resource_id: scenario_name, run_id: unique_id, pid: pid}}))
         end
         {:ok, pid}
       {:error, reason} = error ->
         Logger.error("Failed to start scenario '#{scenario_name}': #{inspect(reason)}")
         error
     end
-  end
-
-  def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents}) do
-    start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents, "subscribers" => []})
   end
 
   # deprecated
@@ -74,7 +63,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
 
     case DynamicSupervisor.start_child(__MODULE__, spec) do
       {:ok, pid} ->
-        Logger.info("Started scenario '#{scenario_name}' with PID #{inspect(pid)}")
+        DirectDebug.info("Started scenario '#{scenario_name}' with PID #{inspect(pid)}", true)
         {:ok, pid}
       {:error, reason} = error ->
         Logger.error("Failed to start scenario '#{scenario_name}': #{inspect(reason)}")
@@ -82,15 +71,15 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     end
   end
 
-  def stop_scenario(scenario_id, subscribers \\ []) do
+  def stop_scenario(scenario_id) do
     DirectDebug.info("ScenarioSupervisor will attempt to stop scenario with id '#{inspect(scenario_id)}'")
     case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario_id) do
       [{pid, _}] ->
-        Logger.debug("found scenario with pid '#{inspect(pid)}'... will terminate")
-        case Process.whereis(:pg) do
-          nil -> Enum.each(subscribers, fn sub -> send(Base.decode64!(sub) |> :erlang.binary_to_term, {:scenario_stopped}) end)
-          _ -> :ok
-        end
+#        Logger.debug("found scenario with pid '#{inspect(pid)}'... will terminate")
+#        case Process.whereis(:pg) do
+#          nil -> Enum.each(subscribers, fn sub -> send(Base.decode64!(sub) |> :erlang.binary_to_term, {:scenario_stopped}) end)
+#          _ -> :ok
+#        end
 
 
         DynamicSupervisor.terminate_child(__MODULE__, pid)

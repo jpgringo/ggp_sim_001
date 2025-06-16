@@ -131,8 +131,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   defp handle_rpc_call("scenario_stopped", params, state) do
     :logger.info("#{state.name} - Handling scenario_stopped!!: #{inspect(params)}")
-    subscribers = params["subscribers"]
-    GenePrototype0001.Sim.ScenarioSupervisor.stop_scenario(params["id"], subscribers)
+    GenePrototype0001.Sim.ScenarioSupervisor.stop_scenario(params["id"])
 
     # Forward batch to WebSocket clients
     GenePrototype0001.SimulationSocket.broadcast_stop(params)
