@@ -76,9 +76,12 @@ defmodule GenePrototype0001.Sim.Scenario do
 
   @impl true
   def terminate(reason, state) do
-    Logger.info("Terminating scenario #{state.name} with reason: #{inspect(reason)}")
+    DirectDebug.info("Terminating scenario #{state.name} with reason: #{inspect(reason)}", true)
     # Stop the OntaSupervisor; since we started it directly, we need to exit it explicitly
     Logger.debug("Will attempt to terminate OntaSupervisor process '#{inspect(state.ontasup)}'")
+    if Process.whereis(:pg) != nil do
+      Enum.each(:pg.get_members(:scenario_events), & send(&1, {:scenario_terminated, state}))
+    end
     Process.exit(state.ontasup, :shutdown)
     :ok
   end

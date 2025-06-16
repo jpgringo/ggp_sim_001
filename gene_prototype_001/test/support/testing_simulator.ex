@@ -34,7 +34,6 @@ defmodule TestingSimulator do
       subscribers -> %{subscribers: subscribers}
     end
     DirectDebug.extra(">>>> params: #{inspect(params)} -> #{inspect(additional_data)}")
-    # Global.transmit("scenario_started", {"scenario": scenario, "unique_id": unique_id, "agents": player_data})
     notification = Jason.encode!(
       %{
         jsonrpc: "2.0",
@@ -45,6 +44,25 @@ defmodule TestingSimulator do
           agents: agents
         },
         additional_data)
+      })
+    :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:stop_scenario_run,
+    %{resource_id: scenario_resource_id, run_id: run_id, subscribers: subscribers}},
+        _from, %{socket: socket, send_ip: send_ip, send_port: send_port} = state) do
+    DirectDebug.info("#{@testing_simulator_name} - handling :stop_scenario_run. res=#{scenario_resource_id}, run=#{run_id}; subscribers: #{inspect(subscribers)}")
+    notification = Jason.encode!(
+      %{
+        jsonrpc: "2.0",
+        method: "scenario_stopped",
+        params: Map.merge(%{
+            scenario: scenario_resource_id,
+            id: run_id
+          },
+          %{subscribers: subscribers})
       })
     :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
     {:reply, :ok, state}

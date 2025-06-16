@@ -12,6 +12,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   @impl true
   def init(opts) do
+    DirectDebug.info("initing UDP server with opts #{inspect(opts)}")
     send_ip = Keyword.get(opts, :send_ip, "127.0.0.1")
     send_port = Keyword.get(opts, :send_port, 7401)
     receive_port = Keyword.fetch!(opts, :receive_port)
@@ -115,13 +116,24 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   #  ============================== SCENARIO STATE HANDLERS ============================
   defp handle_rpc_call("scenario_started", params, state) do
     DirectDebug.info("#{@sim_connector_name} - Handling scenario started!!: #{inspect(params)}")
-    GenePrototype0001.Sim.ScenarioSupervisor.start_scenario(params)
+    scenario = GenePrototype0001.Sim.ScenarioSupervisor.start_scenario(params)
+    DirectDebug.warning("scenario initialized: #{inspect(scenario)}/#{inspect(Process.whereis(:pg))}")
+    if Mix.env() == :test do
+      case Process.whereis(:pg) do
+        nil -> :logger.error(":pg is not running in the test environment")
+        pg_pid ->
+          DirectDebug.warning(":pg is running! #{inspect(pg_pid)}... #{inspect(:pg.get_members(:scenario_events))}")
+          :ok
+      end
+    end
     {:noreply, %{state | sim_ready: true}}
   end
 
   defp handle_rpc_call("scenario_stopped", params, state) do
-    Logger.info("Scenario stopped!!: #{inspect(params)}")
-    GenePrototype0001.Sim.ScenarioSupervisor.stop_scenario(params["id"])
+    :logger.info("#{state.name} - Handling scenario_stopped!!: #{inspect(params)}")
+    subscribers = params["subscribers"]
+    GenePrototype0001.Sim.ScenarioSupervisor.stop_scenario(params["id"], subscribers)
+
     # Forward batch to WebSocket clients
     GenePrototype0001.SimulationSocket.broadcast_stop(params)
 

@@ -4,8 +4,8 @@ defmodule GenePrototype0001.Test.OntaUnits do
   #  import ExUnit.CaptureIO
   require DirectDebug
 
-  @tag :onta
-  @tag :unit
+  @moduletag :unit
+  @moduletag :onta
 
   alias GenePrototype0001.Onta.Ontos
 
@@ -13,6 +13,7 @@ defmodule GenePrototype0001.Test.OntaUnits do
 
   describe "data preprocessing" do
     @describetag :unit
+    @describetag :onta
 
     test "preprocess single data event", _state do
       processed_set = Ontos.preprocess_data_batch([

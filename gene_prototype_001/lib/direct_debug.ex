@@ -27,7 +27,7 @@ defmodule DirectDebug do
   end
 
   def warning(text, alsoLog? \\ false) do
-    if Application.get_env(:gene_prototype_0001, :direct_log_level, :none) in [:error, :warn, :all] do
+    if Application.get_env(:gene_prototype_0001, :direct_log_level, :none) in [:warn, :info, :all] do
       IO.puts(ansi_wrap("[warn] >> #{text}", [1, 4, 33]))
       if alsoLog? do
         :logger.warning(text)

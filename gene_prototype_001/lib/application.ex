@@ -3,6 +3,7 @@ defmodule GenePrototype0001.Application do
 
   @impl true
   def start(_type, _args) do
+    DirectDebug.info("starting application...")
     children = [
       # Registry for Scenario instances
       {Registry, keys: :unique, name: GenePrototype0001.Sim.ScenarioRegistry},
@@ -16,11 +17,13 @@ defmodule GenePrototype0001.Application do
       {GenePrototype0001.Sim.ScenarioSupervisor, []},
       # Dynamic supervisor for Ontos instances
       {GenePrototype0001.Onta.OntosSupervisor, []},
+      # Scenario Run Report Server
+      {GenePrototype0001.Reports.ScenarioRunReportServer, []},
       # External connection supervisor
       {GenePrototype0001.Sim.ExternalConnectionSupervisor, [
-        receive_port: 7400,
-        send_ip: "127.0.0.1",
-        send_port: 7401
+        receive_port: Application.get_env(:gene_prototype_0001, :receive_port, 7400),
+        send_ip: Application.get_env(:gene_prototype_0001, :send_ip, "127.0.0.1"),
+        send_port: Application.get_env(:gene_prototype_0001, :send_port, 7401)
       ]},
       # Bandit HTTP server
       {Bandit,
