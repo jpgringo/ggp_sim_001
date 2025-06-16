@@ -24,7 +24,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
   end
 
   def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents, "subscribers" => subscribers}) do
-    :logger.debug("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}")
+    DirectDebug.info("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}", true)
 
     # Create child spec with proper arguments
     spec = %{
@@ -50,28 +50,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     end
   end
 
-  # deprecated
-  def start_scenario(scenario_name, params \\ %{}) do
-    Logger.debug("SIM SUPERVISOR (DEPRECATED?): starting scenario '#{scenario_name}' with params #{inspect(params)}")
-
-    # Create child spec with proper arguments
-    spec = %{
-      id: GenePrototype0001.Sim.Scenario,
-      start: {GenePrototype0001.Sim.Scenario, :start_link, [{scenario_name, params}]},
-      restart: :transient
-    }
-
-    case DynamicSupervisor.start_child(__MODULE__, spec) do
-      {:ok, pid} ->
-        DirectDebug.info("Started scenario '#{scenario_name}' with PID #{inspect(pid)}", true)
-        {:ok, pid}
-      {:error, reason} = error ->
-        Logger.error("Failed to start scenario '#{scenario_name}': #{inspect(reason)}")
-        error
-    end
-  end
-
-  def stop_scenario(scenario_id) do
+   def stop_scenario(scenario_id) do
     DirectDebug.info("ScenarioSupervisor will attempt to stop scenario with id '#{inspect(scenario_id)}'")
     case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario_id) do
       [{pid, _}] ->

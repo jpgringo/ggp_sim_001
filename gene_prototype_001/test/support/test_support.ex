@@ -70,8 +70,8 @@ def make_scenario_params(scenario_resource_id, run_id, port \\ 7400) do
 end
 
   @doc """
-    waits for receipt of messages during the period defined by timeout, and evaluates each received
-    message using evaluation_func; evaluation_func must return either `{:ok, parsed_or_raw_message}`,
+    waits for receipt of messages during the period defined by timeout and evaluates each received
+    message using evaluation_func; evaluation_func must return either{:ok, parsed_or_raw_message},
   or `{:error, reason}` from every execution path
 """
   def wait_for_confirmation(evaluation_func, failure_msg \\ "confirmation not received", timeout \\ 3000) do

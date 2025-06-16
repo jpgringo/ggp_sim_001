@@ -14,6 +14,9 @@ defmodule GenePrototype0001.Test.SimulationManagement do
           start_supervised!({Bandit, plug: GenePrototype0001.Bandit.Router, scheme: :http, port: port})
       end)
     end)
+
+    :pg.start_link()
+
     {:ok, base_url: "http://localhost:#{port}"}
   end
 
@@ -23,6 +26,10 @@ defmodule GenePrototype0001.Test.SimulationManagement do
 
   describe "object instantiation without external interface" do
     test "Create a new scenario internally", _state do
+      DirectDebug.section("starting 'Create a new scenario internally'...")
+
+      :pg.join(:scenario_events, self())
+
       scenario_resource_id = "quux"
       run_id = Nanoid.generate(12)
       check_for_scenario(scenario_resource_id, run_id, false)
@@ -30,7 +37,8 @@ defmodule GenePrototype0001.Test.SimulationManagement do
       opts = %{
         "scenario" => scenario_resource_id,
         "unique_id" => run_id,
-        "agents" =>  make_agent_params(agent_count, 1)
+        "agents" =>  make_agent_params(agent_count, 1),
+        "subscribers" => []
       }
       instantiate_scenario(opts)
       {:ok, scenario_pid} = check_for_scenario(scenario_resource_id, run_id)
@@ -42,6 +50,10 @@ defmodule GenePrototype0001.Test.SimulationManagement do
 
   describe "object instantiation WITH external interface" do
     test "receive scenario_started via UDP" do
+      DirectDebug.section("starting 'receive scenario_started via UDP'...")
+
+      :pg.join(:scenario_events, self())
+
       {:ok, ip} = :inet.parse_address(~c"127.0.0.1")
       scenario_name = "fnord"
       scenario_id = Nanoid.generate(12)

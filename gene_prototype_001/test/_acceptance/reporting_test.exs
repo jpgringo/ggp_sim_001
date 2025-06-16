@@ -33,7 +33,7 @@ defmodule GenePrototype0001.Test.Acceptance.Reporting do
     @describetag :reporting
 
     test "check report creation on scenario termination", _state do
-      DirectDebug.info("starting 'check report creation on scenario termination'...")
+      DirectDebug.section("starting 'check report creation on scenario termination'...")
 
       :pg.join(:scenario_events, self())
 
