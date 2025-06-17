@@ -9,6 +9,14 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   @sim_connector_name :SimUdpConnector
 
+  #============================================= API ============================================= #
+
+  def sim_ready? do
+    GenServer.call(@sim_connector_name, :sim_ready)
+  end
+
+  #======================================= IMPLEMENTATION ======================================== #
+
   def start_link(opts) do
     Logger.info("Starting UDP server...")
     GenServer.start_link(__MODULE__, opts, name: @sim_connector_name)
@@ -57,7 +65,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   @impl true
-  def handle_call(:sim_ready?, _from, state) do
+  def handle_call(:sim_ready, _from, state) do
     {:reply, state.sim_ready, state}
   end
 

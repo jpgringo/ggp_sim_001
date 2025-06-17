@@ -7,12 +7,29 @@ defmodule GenePrototype0001.Sim.SimController do
 
   #============================================= API ============================================= #
 
+  def current_sim_state do
+    GenServer.call(:SimController, :current_sim_state)
+  end
+
+
+  def start_scenario(params) do
+    GenServer.call(:SimController, {:start_scenario, params})
+  end
+
   def handle_sim_started(params) do
     GenServer.cast(:SimController, {:sim_ready, params})
   end
 
+  def stop_scenario(scenario_id) do
+    GenServer.call(:SimController, {:stop_scenario, scenario_id})
+  end
+
   def handle_sim_stopped(params) do
     GenServer.cast(:SimController, {:sim_stopped, params})
+  end
+
+  def panic do
+    GenServer.call(:SimController, :panic)
   end
 
   #======================================= IMPLEMENTATION ======================================== #

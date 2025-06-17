@@ -20,11 +20,14 @@ defmodule GenePrototype0001.Bandit.Router do
   plug :match
   plug :dispatch
 
+  alias GenePrototype0001.Sim.SimController
+  alias GenePrototype0001.Sim.UdpConnectionServer
+
   get "/api/status" do
-    sim_ready = GenServer.call(:SimUdpConnector, :sim_ready?)
+    sim_ready = UdpConnectionServer.sim_ready?
     response = case sim_ready do
       true ->
-        {:ok, sim_state} = GenServer.call(:SimController, :current_sim_state)
+        {:ok, sim_state} = SimController.current_sim_state
         Jason.encode!(%{
           "server" => true,
           "sim" => %{"ready" => true,
@@ -46,7 +49,8 @@ defmodule GenePrototype0001.Bandit.Router do
   post "/api/scenario" do
     {:ok, body, conn} = read_body(conn)
     {:ok, params} = Jason.decode(body)
-    case GenServer.call(:SimController, {:start_scenario, params}) do
+
+    case SimController.start_scenario(params) do
       :ok ->
         conn
         |> put_resp_header("x-scenario-ws", "/ws/scenario")
@@ -69,12 +73,12 @@ defmodule GenePrototype0001.Bandit.Router do
 
   patch "/api/scenario/:scenario_id/stop" do
     DirectDebug.info("handling stop scenario request for #{conn.params["scenario_id"]}")
-    _result = GenServer.call(:SimController, {:stop_scenario, conn.params["scenario_id"]})
+    _result =SimController.stop_scenario(conn.params["scenario_id"])
     send_resp(conn, 200, "OK")
   end
 
   put "/api/scenario/panic" do
-    resp = GenServer.call(:SimController, :panic)
+    resp = SimController.panic
     DirectDebug.info("panic: #{inspect(resp)}")
     send_resp(conn, 200, "OK")
   end

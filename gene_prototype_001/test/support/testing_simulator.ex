@@ -21,7 +21,7 @@ defmodule GenePrototype0001.Test.TestingSimulator do
   end
 
   def send_sensor_data_batch(run_id, sensor_data_batch) do
-    GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, sensor_data_batch})
+    GenServer.call(@testing_simulator_name, {:send_sensor_data_batch, run_id, sensor_data_batch})
   end
 
   #======================================= IMPLEMENTATION ======================================== #
