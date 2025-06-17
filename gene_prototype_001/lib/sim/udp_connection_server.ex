@@ -3,6 +3,10 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   require Logger
   require DirectDebug
 
+  alias GenePrototype0001.Sim.SimController
+  alias GenePrototype0001.SimulationSocket
+  alias GenePrototype0001.Sim.ScenarioSupervisor
+
   @sim_connector_name :SimUdpConnector
 
   def start_link(opts) do
@@ -23,7 +27,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   @impl true
-  def handle_info({:udp, socket, ip, port, data}, state) do
+  def handle_info({:udp, _socket, ip, port, data}, state) do
     DirectDebug.extra("#{@sim_connector_name} - HANDLING UDP INFO!! #{inspect(data)}}")
     client_string = "#{:inet.ntoa(ip)}:#{port}"
     new_state = case Jason.decode(data) do
@@ -94,8 +98,8 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   #  ============================== SIM STATE HANDLERS ============================
   defp handle_rpc_call("sim_ready", params, state) do
     Logger.info("#{state.name} - Sim ready!!: #{inspect(params)}")
-    GenServer.cast(:SimController, {:sim_ready, params})
-    GenePrototype0001.SimulationSocket.broadcast_start(params)
+    SimController.handle_sim_start(params)
+    SimulationSocket.broadcast_start(params)
     {:noreply, %{state | sim_ready: true}}
   end
 
@@ -103,7 +107,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     Logger.info("Sim stopping!!: #{inspect(params)}")
     # Forward batch to WebSocket clients
     GenServer.cast(:SimController, {:sim_stopped, params})
-    GenePrototype0001.SimulationSocket.broadcast_stop(params)
+    SimulationSocket.broadcast_stop(params)
 
     {:noreply, %{state | sim_ready: false}}
   end
@@ -111,7 +115,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   #  ============================== SCENARIO STATE HANDLERS ============================
   defp handle_rpc_call("scenario_started", params, state) do
     DirectDebug.info("#{@sim_connector_name} - Handling scenario started!!: #{inspect(params)}")
-    scenario = GenePrototype0001.Sim.ScenarioSupervisor.start_scenario(params)
+    scenario = ScenarioSupervisor.start_scenario(params)
     DirectDebug.warning("scenario initialized: #{inspect(scenario)}/#{inspect(Process.whereis(:pg))}")
     if Mix.env() == :test do
       case Process.whereis(:pg) do
@@ -126,10 +130,10 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   defp handle_rpc_call("scenario_stopped", params, state) do
     :logger.info("#{state.name} - Handling scenario_stopped!!: #{inspect(params)}")
-    GenePrototype0001.Sim.ScenarioSupervisor.stop_scenario(params["id"])
+    ScenarioSupervisor.stop_scenario(params["id"])
 
     # Forward batch to WebSocket clients
-    GenePrototype0001.SimulationSocket.broadcast_stop(params)
+    SimulationSocket.broadcast_stop(params)
 
     {:noreply, %{state | sim_ready: true}}
   end
@@ -166,30 +170,14 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     DirectDebug.extra("#{state.name} - handling batch: #{inspect(batch)}")
 
     # Forward batch to WebSocket clients
-    GenePrototype0001.SimulationSocket.broadcast_batch(batch)
+    SimulationSocket.broadcast_batch(batch)
 
     group_by_scenario(batch["sensor_data"])
     |> Enum.each(fn scenario ->
       DirectDebug.extra("#{state.name} - extracted data from batch for scenario '#{inspect(scenario)}'")
-      case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario["scenario"]) do
-        [{pid, _}] ->
-          DirectDebug.extra("#{state.name} - found scenario (#{inspect(pid)})")
-          GenServer.cast(pid, {:sensor_batch, scenario["entries"]})
-        [] ->
-          DirectDebug.warning("Received sensor data for unknown scenario #{scenario["scenario"]}", true)
-      end
+      GenePrototype0001.Sim.Scenario.route_sensor_data_batch(scenario["scenario"],scenario["entries"])
     end)
 
-    # TODO: delete this, it should ALWAYS be handled through Scenarios
-#    group_by_agent(batch)
-#    |> Enum.each(fn entry ->
-#      case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, entry["agent"]) do
-#        [{_pid, _}] ->
-#          GenServer.cast(_pid, {:sensor_batch, entry["events"]})
-#        [] ->
-#          Logger.warning("2. Received sensor data for unknown agent #{entry["agent"]}")
-#      end
-#    end)
     {:noreply, state}
   end
 

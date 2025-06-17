@@ -32,7 +32,7 @@ defmodule TestingSimulator do
 
   @impl true
   def handle_call({:initiate_scenario_run,
-    %{resource_id: scenario_resource_id, run_id: run_id, agents: agents} = params},
+    %{resource_id: scenario_resource_id, run_id: run_id, agents: agents}},
         _from, %{socket: socket, send_ip: send_ip, send_port: send_port} = state) do
     DirectDebug.info("#{@testing_simulator_name} - handling :initiate_scenario_run. res=#{scenario_resource_id}, run=#{run_id}")
     notification = Jason.encode!(
@@ -95,7 +95,6 @@ defmodule TestingSimulator do
         %{socket: socket, send_ip: send_ip, send_port: send_port} = state) do
     DirectDebug.extra("TestingSimulator received send_sensor_data_batch message: #{inspect(run_id)}-#{inspect(data)}")
 
-    encoded_pid = self() |> :erlang.term_to_binary() |> Base.encode64()
     notification = Jason.encode!(%{
       jsonrpc: "2.0",
       method: "batch",

@@ -4,6 +4,15 @@ defmodule GenePrototype0001.Sim.SimController do
   use GenServer
   require Logger
 
+
+  #============================================= API ============================================= #
+
+  def handle_sim_start(params) do
+    GenServer.cast(:SimController, {:sim_ready, params})
+  end
+
+  #======================================= IMPLEMENTATION ======================================== #
+
   def start_link(_opts) do
     name = :SimController
     GenServer.start_link(__MODULE__, [name: name], name: name)

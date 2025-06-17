@@ -102,15 +102,15 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
       end
       confirmation_data = MessageConfirmation.wait_for_confirmation(evaluation_func, "actuator response not received")
 
-#      # and validate the actual message received
-#      case confirmation_data do
-#        %{"agent" => agent, "data" => data} ->
-#          assert agent == "A"
-#          validation_func.(data)
-#        :no_action -> assert true
-#        {:error, msg} -> DirectDebug.error("bad confirmation response: #{inspect(msg)}")
-#          assert false, "expected message #{expected_message}; got #{inspect(msg)}"
-#      end
+      # and validate the actual message received
+      case confirmation_data do
+        %{"agent" => agent, "data" => data} ->
+          assert agent == "A"
+          validation_func.(data)
+        :no_action -> assert true
+        {:error, msg} -> DirectDebug.error("bad confirmation response: #{inspect(msg)}")
+          assert false, "expected message #{expected_message}; got #{inspect(msg)}"
+      end
     end
 
     test "complex data set", state do

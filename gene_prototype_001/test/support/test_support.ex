@@ -110,8 +110,6 @@ end
   def stop_scenario(resource_id, run_id) do
     DirectDebug.info("stopping scenario #{resource_id}_#{run_id}...")
 
-    encoded_pid = self() |> :erlang.term_to_binary() |> Base.encode64()
-
     GenServer.call(:TestingSimulator,
       {:stop_scenario_run,
         %{resource_id: resource_id,

@@ -5,6 +5,20 @@ defmodule GenePrototype0001.Sim.Scenario do
   require Logger
   require DirectDebug
 
+  #============================================= API ============================================= #
+
+  def route_sensor_data_batch(scenario, entries) do
+    case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario) do
+      [{pid, _}] ->
+        DirectDebug.extra("Scenario - found scenario (#{inspect(pid)})")
+        GenServer.cast(pid, {:sensor_batch, entries})
+      [] ->
+        DirectDebug.warning("Received sensor data for unknown scenario #{scenario}", true)
+    end
+  end
+
+  #======================================= IMPLEMENTATION ======================================== #
+
   def start_link(scenario_name, unique_id, agents) do
     Logger.debug("Scenario starting '#{scenario_name}/#{unique_id} with agents: #{inspect(agents)}")
     unique_name = "#{scenario_name || "unnamed"}_#{unique_id}"
