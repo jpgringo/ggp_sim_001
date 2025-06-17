@@ -58,7 +58,6 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
       resource_id = TestSupport.make_resource_id()
       run_id = TestSupport.make_run_id()
       agent_ids = ["A"]
-      encoded_pid = self() |> :erlang.term_to_binary() |> Base.encode64()
 
       # initialize the scenario
       TestSupport.start_scenario(resource_id, run_id, agent_ids, 1)
@@ -66,28 +65,28 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
       actuator_number = 0
 
       # single, all-zero data event
-      sensor_data_round_trip(run_id, [{"A", [0, [0, 0, 0]]}], :actuator_data, is_nonzeroed_actuator(actuator_number), [encoded_pid])
+      sensor_data_round_trip(run_id, [{"A", [0, [0, 0, 0]]}], :actuator_data, is_nonzeroed_actuator(actuator_number))
 
       # multiple data events that average to zero
       sensor_data_round_trip(run_id, [
         {"A", [0, [0, 0, 0]]},
         {"A", [0, [-1, -2, -3]]},
         {"A", [0, [1, 2, 3]]},
-      ], :actuator_data, is_nonzeroed_actuator(actuator_number), [encoded_pid])
+      ], :actuator_data, is_nonzeroed_actuator(actuator_number))
 
       # single data event that is not a zero vector
-      sensor_data_round_trip(run_id, [{"A", [0, [1, 2, 3]]}], :no_action, is_nonzeroed_actuator(actuator_number), [encoded_pid])
+      sensor_data_round_trip(run_id, [{"A", [0, [1, 2, 3]]}], :no_action, is_nonzeroed_actuator(actuator_number))
 
       # multiple data events that do NOT average to zero
       sensor_data_round_trip(run_id, [
         {"A", [0, [0, 0, 0]]},
         {"A", [0, [1, 2, 3]]},
         {"A", [0, [2, 3, 4]]},
-      ], :no_action, is_nonzeroed_actuator(actuator_number), [encoded_pid])
+      ], :no_action, is_nonzeroed_actuator(actuator_number))
     end
 
-    def sensor_data_round_trip(run_id, sensor_data_batch, expected_message, validation_func, subscribers) do
-      GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, sensor_data_batch, subscribers})
+    def sensor_data_round_trip(run_id, sensor_data_batch, expected_message, validation_func) do
+      GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, sensor_data_batch})
 
       # wait for a confirmation that the resultant actuator response has been received by the testing sim (or no response has been generated)...
       evaluation_func = case expected_message do

@@ -72,7 +72,6 @@ end
 
   def start_scenario(resource_id, run_id, agent_ids, actuators) do
     DirectDebug.info("starting scenario #{resource_id}_#{run_id}...")
-    encoded_pid = self() |> :erlang.term_to_binary() |> Base.encode64()
 
     agents = Enum.map(agent_ids, & %{id: &1, actuators: actuators})
 
@@ -82,8 +81,7 @@ end
       {:initiate_scenario_run,
         %{resource_id: resource_id,
           run_id: run_id,
-          agents: agents,
-          subscribers: [encoded_pid]
+          agents: agents
         }})
 
     case Process.whereis(:pg) do
@@ -117,8 +115,7 @@ end
     GenServer.call(:TestingSimulator,
       {:stop_scenario_run,
         %{resource_id: resource_id,
-          run_id: run_id,
-          subscribers: [encoded_pid]
+          run_id: run_id
         }})
 
     if Process.whereis(:pg) != nil do

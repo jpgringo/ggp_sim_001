@@ -23,13 +23,13 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   @impl true
-  def handle_info({:udp, _socket, ip, port, data, subscribers}, state) do
+  def handle_info({:udp, socket, ip, port, data}, state) do
     DirectDebug.extra("#{@sim_connector_name} - HANDLING UDP INFO!! #{inspect(data)}}")
     client_string = "#{:inet.ntoa(ip)}:#{port}"
     new_state = case Jason.decode(data) do
       {:ok, %{"method" => method, "params" => params}} ->
         DirectDebug.info("#{@sim_connector_name} - Received '#{method}' request from #{client_string} with params: #{inspect(params)}", true)
-        case handle_rpc_call(method, Map.merge(%{"subscribers" => subscribers}, params), state) do
+        case handle_rpc_call(method, params, state) do
           {:noreply, updated_state} -> updated_state
           _ -> state
         end
@@ -46,12 +46,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, new_state}
   end
 
-  def handle_info({:udp, socket, ip, port, data}, state) do
-    send(self(), {:udp, socket, ip, port, data, []})
-    {:noreply, state}
-  end
-
-    @impl true
+  @impl true
   def handle_info(msg, state) do
     :logger.warning(":SimUdpConnector received unknown message: #{inspect(msg)}")
     {:noreply, state}

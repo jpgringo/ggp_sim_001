@@ -23,7 +23,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
 
   end
 
-  def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents, "subscribers" => subscribers}) do
+  def start_scenario(%{"scenario" => scenario_name, "unique_id" => unique_id, "agents" => agents}) do
     DirectDebug.info("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}", true)
 
     # Create child spec with proper arguments

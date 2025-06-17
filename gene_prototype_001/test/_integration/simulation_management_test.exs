@@ -37,8 +37,7 @@ defmodule GenePrototype0001.Test.SimulationManagement do
       opts = %{
         "scenario" => scenario_resource_id,
         "unique_id" => run_id,
-        "agents" =>  make_agent_params(agent_count, 1),
-        "subscribers" => []
+        "agents" =>  make_agent_params(agent_count, 1)
       }
       instantiate_scenario(opts)
       {:ok, scenario_pid} = check_for_scenario(scenario_resource_id, run_id)
@@ -71,8 +70,7 @@ defmodule GenePrototype0001.Test.SimulationManagement do
             "agents":#{agent_params}
           }
         }
-        """,
-        [self()]
+        """
       })
 
       scenario_timeout = 3000
