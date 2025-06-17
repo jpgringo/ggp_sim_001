@@ -49,11 +49,14 @@ defmodule GenePrototype0001.Numina.Numen do
 
       # Default callback for processing sensor data sets
       @impl true
-      def handle_cast({:process_sensor_data_set, sensor_data, subscribers}, state) do
+      def handle_cast({:process_sensor_data_set, sensor_data}, state) do
         case sensor_data_updated_new(sensor_data, state) do
           {:ok, new_state, []} ->
-            DirectDebug.extra("Numen for Ontos #{inspect(state.agent_id)} - will do nothing")
-            Enum.each(subscribers, fn sub -> send(Base.decode64!(sub) |> :erlang.binary_to_term, :no_action) end)
+            DirectDebug.warning("***** Numen for Ontos #{inspect(state.agent_id)} - will do nothing")
+            if Process.whereis(:pg) != nil do
+                DirectDebug.warning("Sending to :actuator_events process group…")
+                Enum.each(:pg.get_members(:actuator_events), & send(&1, :no_action))
+            end
             {:noreply, new_state}
           {:ok, new_state, commands} when is_list(commands) ->
             DirectDebug.extra("Numen sending numen commands back to Ontos #{inspect(state.agent_id)}")

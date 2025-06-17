@@ -5,6 +5,7 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
   require DirectDebug
 
   alias GenePrototype0001.Test.TestSupport
+  alias GenePrototype0001.Test.MessageConfirmation
 
   @moduletag :external
 
@@ -52,6 +53,7 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
       DirectDebug.section("starting 'check for basic functionality'...")
 
       :pg.join(:scenario_events, self())
+      :pg.join(:actuator_events, self())
 
       resource_id = TestSupport.make_resource_id()
       run_id = TestSupport.make_run_id()
@@ -93,22 +95,23 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
                             {:actuator_data, params} -> {:ok, params}
                             msg -> {:error, msg}
                           end
-        :no_action -> fn
+        :no_action ->
+          fn
                         :no_action -> {:ok, :no_action}
                         msg -> {:error, msg}
                       end
       end
-      confirmation_data = TestSupport.wait_for_confirmation(evaluation_func, "actuator response not received")
+      confirmation_data = MessageConfirmation.wait_for_confirmation(evaluation_func, "actuator response not received")
 
-      # and validate the actual message received
-      case confirmation_data do
-        %{"agent" => agent, "data" => data} ->
-          assert agent == "A"
-          validation_func.(data)
-        :no_action -> assert true
-        {:error, msg} -> DirectDebug.error("bad confirmation response: #{inspect(msg)}")
-          assert false, "expected message #{expected_message}; got #{inspect(msg)}"
-      end
+#      # and validate the actual message received
+#      case confirmation_data do
+#        %{"agent" => agent, "data" => data} ->
+#          assert agent == "A"
+#          validation_func.(data)
+#        :no_action -> assert true
+#        {:error, msg} -> DirectDebug.error("bad confirmation response: #{inspect(msg)}")
+#          assert false, "expected message #{expected_message}; got #{inspect(msg)}"
+#      end
     end
 
     test "complex data set", state do

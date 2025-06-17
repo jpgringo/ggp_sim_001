@@ -13,6 +13,12 @@ defmodule TestingSimulator do
   @impl true
   def init(init_args) do
     DirectDebug.info("initing Testing Simulator starting with args #{inspect(init_args)}...")
+
+    if Process.whereis(:pg) != nil do
+      DirectDebug.info("testing simulator joining pg group :actuator_events")
+      :pg.join(:actuator_events, self())
+    end
+
     socket = case :gen_udp.open(init_args.receive_port, [:binary, active: true, reuseaddr: true]) do
       {:ok, socket} ->
         DirectDebug.info("Testing Simulator listening on socket #{inspect(Port.info(socket))}")

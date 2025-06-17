@@ -173,15 +173,13 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     # Forward batch to WebSocket clients
     GenePrototype0001.SimulationSocket.broadcast_batch(batch)
 
-    subscribers = Map.get(batch, "subscribers", [])
-
     group_by_scenario(batch["sensor_data"])
     |> Enum.each(fn scenario ->
       DirectDebug.extra("#{state.name} - extracted data from batch for scenario '#{inspect(scenario)}'")
       case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario["scenario"]) do
         [{pid, _}] ->
           DirectDebug.extra("#{state.name} - found scenario (#{inspect(pid)})")
-          GenServer.cast(pid, {:sensor_batch, scenario["entries"], subscribers})
+          GenServer.cast(pid, {:sensor_batch, scenario["entries"]})
         [] ->
           DirectDebug.warning("Received sensor data for unknown scenario #{scenario["scenario"]}", true)
       end
