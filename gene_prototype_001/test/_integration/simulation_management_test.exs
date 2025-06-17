@@ -6,6 +6,8 @@ defmodule GenePrototype0001.Test.SimulationManagement do
   @moduletag :integration
 
   alias GenePrototype0001.Sim.ScenarioSupervisor
+  alias GenePrototype0001.Sim.Scenario
+  alias GenePrototype0001.Onta.Ontos
 
   setup_all do
     port = 4003
@@ -153,7 +155,7 @@ defmodule GenePrototype0001.Test.SimulationManagement do
   end
 
   defp check_for_onta(scenario, expected_onta) do
-    {:ok, onta} = GenServer.call(scenario, :get_onta)
+    {:ok, onta} = Scenario.get_onta(scenario)
     assert length(onta) == expected_onta
     {:ok, onta}
   end
@@ -166,10 +168,10 @@ defmodule GenePrototype0001.Test.SimulationManagement do
   end
 
   defp check_for_numina(ontos_pid, min_numina) do
-    case GenServer.call(ontos_pid, :get_numina) do
+    case Ontos.get_numina(ontos_pid) do
       {:ok, numina_pids} when length(numina_pids) >= min_numina -> assert true
       {:ok, numina_pids} ->
-        %{agent_id: agent_id} = GenServer.call(ontos_pid, :get_state)
+        %{agent_id: agent_id} = Ontos.get_state(ontos_pid)
         assert false, "#{inspect(agent_id)} expected >= #{min_numina} numina; got #{length(numina_pids)}"
     end
   end

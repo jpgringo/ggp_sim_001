@@ -5,6 +5,7 @@ defmodule GenePrototype0001.Test.Acceptance.Reporting do
   require DirectDebug
 
   alias GenePrototype0001.Test.TestSupport
+  alias GenePrototype0001.Test.TestingSimulator
   alias GenePrototype0001.Reports.ScenarioRunReportServer
 
   @moduletag :reporting

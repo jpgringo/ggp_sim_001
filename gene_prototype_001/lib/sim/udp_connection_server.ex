@@ -98,7 +98,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   #  ============================== SIM STATE HANDLERS ============================
   defp handle_rpc_call("sim_ready", params, state) do
     Logger.info("#{state.name} - Sim ready!!: #{inspect(params)}")
-    SimController.handle_sim_start(params)
+    SimController.handle_sim_started(params)
     SimulationSocket.broadcast_start(params)
     {:noreply, %{state | sim_ready: true}}
   end
@@ -106,7 +106,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   defp handle_rpc_call("sim_stopping", params, state) do
     Logger.info("Sim stopping!!: #{inspect(params)}")
     # Forward batch to WebSocket clients
-    GenServer.cast(:SimController, {:sim_stopped, params})
+    SimController.handle_sim_stopped(params)
     SimulationSocket.broadcast_stop(params)
 
     {:noreply, %{state | sim_ready: false}}

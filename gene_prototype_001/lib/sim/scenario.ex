@@ -7,6 +7,10 @@ defmodule GenePrototype0001.Sim.Scenario do
 
   #============================================= API ============================================= #
 
+  def get_onta(scenario_pid) do
+    GenServer.call(scenario_pid, :get_onta)
+  end
+
   def route_sensor_data_batch(scenario, entries) do
     case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario) do
       [{pid, _}] ->

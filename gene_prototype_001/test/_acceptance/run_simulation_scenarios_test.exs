@@ -5,6 +5,7 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
   require DirectDebug
 
   alias GenePrototype0001.Test.TestSupport
+  alias GenePrototype0001.Test.TestingSimulator
   alias GenePrototype0001.Test.MessageConfirmation
 
   @moduletag :external
@@ -86,7 +87,7 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
     end
 
     def sensor_data_round_trip(run_id, sensor_data_batch, expected_message, validation_func) do
-      GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, sensor_data_batch})
+      TestingSimulator.send_sensor_data_batch(run_id, sensor_data_batch)
 
       # wait for a confirmation that the resultant actuator response has been received by the testing sim (or no response has been generated)...
       evaluation_func = case expected_message do

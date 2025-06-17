@@ -1,4 +1,4 @@
-defmodule TestingSimulator do
+defmodule GenePrototype0001.Test.TestingSimulator do
   @moduledoc false
 
   use GenServer
@@ -6,6 +6,25 @@ defmodule TestingSimulator do
 
   @testing_simulator_name :TestingSimulator
 
+  #============================================= API ============================================= #
+
+  def initiate_scenario_run(opts) do
+    GenServer.call(@testing_simulator_name, {:initiate_scenario_run, opts})
+  end
+
+  def stop_scenario_run(resource_id, run_id) do
+    GenServer.call(@testing_simulator_name,
+      {:stop_scenario_run,
+        %{resource_id: resource_id,
+          run_id: run_id
+        }})
+  end
+
+  def send_sensor_data_batch(run_id, sensor_data_batch) do
+    GenServer.call(:TestingSimulator, {:send_sensor_data_batch, run_id, sensor_data_batch})
+  end
+
+  #======================================= IMPLEMENTATION ======================================== #
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: @testing_simulator_name)
   end

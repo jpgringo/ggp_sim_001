@@ -5,6 +5,7 @@ defmodule GenePrototype0001.Test.TestSupport do
 
   alias GenePrototype0001.Sim.ScenarioSupervisor
   alias GenePrototype0001.Test.MessageConfirmation
+  alias GenePrototype0001.Test.TestingSimulator
 
   @alphabet "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -77,12 +78,10 @@ end
 
     DirectDebug.extra("agents: #{inspect(agents)}")
     # first, tell the sim to start the scenario
-    GenServer.call(:TestingSimulator,
-      {:initiate_scenario_run,
-        %{resource_id: resource_id,
-          run_id: run_id,
-          agents: agents
-        }})
+    TestingSimulator.initiate_scenario_run(%{resource_id: resource_id,
+      run_id: run_id,
+      agents: agents
+    })
 
     case Process.whereis(:pg) do
       nil -> MessageConfirmation.wait_for_confirmation(fn msg ->
@@ -110,11 +109,7 @@ end
   def stop_scenario(resource_id, run_id) do
     DirectDebug.info("stopping scenario #{resource_id}_#{run_id}...")
 
-    GenServer.call(:TestingSimulator,
-      {:stop_scenario_run,
-        %{resource_id: resource_id,
-          run_id: run_id
-        }})
+    TestingSimulator.stop_scenario_run(resource_id, run_id)
 
     if Process.whereis(:pg) != nil do
       DirectDebug.warning("will WAIT for scenario termination...")

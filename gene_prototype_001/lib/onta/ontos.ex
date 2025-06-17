@@ -3,13 +3,18 @@ defmodule GenePrototype0001.Onta.Ontos do
   require Logger
   require DirectDebug
 
-  # Client API
-  def start_link({agent_id, opts}) do
-    unique_id = "#{opts[:scenario_id]}_#{agent_id}"
-#    name = via_tuple(agent_id)
-    name = via_tuple(unique_id)
-    DirectDebug.info("Ontos.start_link(#{inspect(unique_id)}, #{inspect(opts)}) -> name=#{inspect(name)}")
-    GenServer.start_link(__MODULE__, {unique_id, [agent_id: agent_id] ++ opts}, name: name)
+  #============================================= API ============================================= #
+
+  def get_state(ontos_pid) when is_pid(ontos_pid) do
+    GenServer.call(ontos_pid, :get_state)
+  end
+
+  def get_state(agent_id) do
+    GenServer.call(via_tuple(agent_id), :get_state)
+  end
+
+  def get_numina(ontos_pid) when is_pid(ontos_pid) do
+    GenServer.call(ontos_pid, :get_numina)
   end
 
   def add_numen(agent_id, numen_module) do
@@ -20,12 +25,21 @@ defmodule GenePrototype0001.Onta.Ontos do
     GenServer.call(via_tuple(agent_id), {:remove_numen, numen_pid})
   end
 
-  def get_state(agent_id) do
-    GenServer.call(via_tuple(agent_id), :get_state)
-  end
-
   def handle_sensor_data(agent_id, data) do
     GenServer.cast(via_tuple(agent_id), {:sensor_data, data})
+  end
+
+
+
+  #======================================= IMPLEMENTATION ======================================== #
+
+  # Client API
+  def start_link({agent_id, opts}) do
+    unique_id = "#{opts[:scenario_id]}_#{agent_id}"
+#    name = via_tuple(agent_id)
+    name = via_tuple(unique_id)
+    DirectDebug.info("Ontos.start_link(#{inspect(unique_id)}, #{inspect(opts)}) -> name=#{inspect(name)}")
+    GenServer.start_link(__MODULE__, {unique_id, [agent_id: agent_id] ++ opts}, name: name)
   end
 
   # Server callbacks

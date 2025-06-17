@@ -7,8 +7,12 @@ defmodule GenePrototype0001.Sim.SimController do
 
   #============================================= API ============================================= #
 
-  def handle_sim_start(params) do
+  def handle_sim_started(params) do
     GenServer.cast(:SimController, {:sim_ready, params})
+  end
+
+  def handle_sim_stopped(params) do
+    GenServer.cast(:SimController, {:sim_stopped, params})
   end
 
   #======================================= IMPLEMENTATION ======================================== #
