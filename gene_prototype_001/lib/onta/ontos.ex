@@ -3,6 +3,8 @@ defmodule GenePrototype0001.Onta.Ontos do
   require Logger
   require DirectDebug
 
+  alias GenePrototype0001.Sim.UdpConnectionServer
+
   #============================================= API ============================================= #
 
   def get_state(ontos_pid) when is_pid(ontos_pid) do
@@ -29,7 +31,9 @@ defmodule GenePrototype0001.Onta.Ontos do
     GenServer.cast(via_tuple(agent_id), {:sensor_data, data})
   end
 
-
+  def handle_numen_commands(ontos_pid, commands) do
+    GenServer.cast(ontos_pid, {:numen_commands, commands})
+  end
 
   #======================================= IMPLEMENTATION ======================================== #
 
@@ -122,7 +126,7 @@ defmodule GenePrototype0001.Onta.Ontos do
     DirectDebug.extra("Ontos - processing incoming sensor set. sensor_data_set: #{inspect(sensor_data_set)}")
     # Notify all Numina
     Enum.each(state.numen_pids, fn pid ->
-      GenServer.cast(pid, {:process_sensor_data_set, sensor_data_set})
+      GenePrototype0001.Numina.Numen.process_sensor_data_set(pid, sensor_data_set)
     end)
 
     {:noreply, :ok, state}
@@ -156,16 +160,13 @@ defmodule GenePrototype0001.Onta.Ontos do
   end
 
   @impl true
-  def handle_info({:numen_commands, commands}, state) do
+  def handle_cast({:numen_commands, commands}, state) do
     # Process commands from Numina
     Enum.each(commands, fn command ->
       case command do
         {:actuator_data, payload} ->
           DirectDebug.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
-          GenServer.call(:SimUdpConnector, {:send_actuator_data,
-            state.raw_id,
-            payload}
-          )
+          UdpConnectionServer.send_actuator_data(state.raw_id, payload)
         _ ->
           Logger.warning("Ontos #{state.agent_id} received unknown command: #{inspect(command)}")
       end

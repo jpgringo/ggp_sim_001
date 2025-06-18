@@ -15,6 +15,13 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     GenServer.call(@sim_connector_name, :sim_ready)
   end
 
+  def send_actuator_data(agent_id, actuator_data) do
+    GenServer.call(@sim_connector_name, {:send_actuator_data,
+      agent_id,
+      actuator_data}
+    )
+  end
+
   #======================================= IMPLEMENTATION ======================================== #
 
   def start_link(opts) do

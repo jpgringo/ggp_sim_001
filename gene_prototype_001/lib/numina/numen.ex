@@ -21,12 +21,27 @@ defmodule GenePrototype0001.Numina.Numen do
   @callback handle_custom(msg :: term(), state :: term()) ::
               {:noreply, new_state :: term()} | {:stop, reason :: term(), new_state :: term()}
 
+  #============================================= API ============================================= #
+
+  @doc """
+  Process a set of sensor data for a specific numen.
+  """
+  def process_sensor_data_set(numen_pid, sensor_data_set) do
+    GenServer.cast(numen_pid, {:process_sensor_data_set, sensor_data_set})
+  end
+
+  #========================================== BEHAVIOUR ========================================== #
+
   defmacro __using__(_opts) do
     quote do
       use GenServer
       require Logger
 
+      alias GenePrototype0001.Onta.Ontos
+
       @behaviour GenePrototype0001.Numina.Numen
+
+      #======================================= IMPLEMENTATION ======================================== #
 
       # Default GenServer callbacks that delegate to handle_custom
       @impl true
@@ -42,7 +57,7 @@ defmodule GenePrototype0001.Numina.Numen do
             {:noreply, new_state}
           {:ok, new_state, commands} when is_list(commands) ->
             # Send commands back to the Ontos
-            send(state.ontos_pid, {:numen_commands, commands})
+            Ontos.handle_numen_commands(state.ontos_pid, commands)
             {:noreply, new_state}
         end
       end
@@ -61,7 +76,7 @@ defmodule GenePrototype0001.Numina.Numen do
           {:ok, new_state, commands} when is_list(commands) ->
             DirectDebug.extra("Numen sending numen commands back to Ontos #{inspect(state.agent_id)}")
             # Send commands back to the Ontos
-            send(state.ontos_pid, {:numen_commands, commands})
+            Ontos.handle_numen_commands(state.ontos_pid, commands)
             {:noreply, new_state}
         end
         {:noreply, state}
