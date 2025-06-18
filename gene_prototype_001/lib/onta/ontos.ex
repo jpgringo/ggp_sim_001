@@ -27,8 +27,8 @@ defmodule GenePrototype0001.Onta.Ontos do
     GenServer.call(via_tuple(agent_id), {:remove_numen, numen_pid})
   end
 
-  def handle_sensor_data(agent_id, data) do
-    GenServer.cast(via_tuple(agent_id), {:sensor_data, data})
+  def handle_sensor_data(ontos_pid, data) do
+    GenServer.cast(ontos_pid, {:sensor_batch, data})
   end
 
   def handle_numen_commands(ontos_pid, commands) do
@@ -120,7 +120,7 @@ defmodule GenePrototype0001.Onta.Ontos do
   end
 
 
-  def process_incoming_sensor_set(sensor_data_set, state) do
+  defp process_incoming_sensor_set(sensor_data_set, state) do
     # TODO: if local state updates happen at all, they should happen separately from the processing
     # TODO: ACTUALLY… the way this is architected is messed up. Should be a `call`
     DirectDebug.extra("Ontos - processing incoming sensor set. sensor_data_set: #{inspect(sensor_data_set)}")
@@ -142,21 +142,6 @@ defmodule GenePrototype0001.Onta.Ontos do
     process_incoming_sensor_set(preprocessed_input, state)
 
     {:noreply, state}
-  end
-
-  @impl true
-  def handle_cast({:sensor_data, [sensor_id, values]}, state) do
-    # Store sensor data
-    new_state = update_sensor_data(state, sensor_id, values)
-
-    # Get current sensor data and notify all Numina
-    data = get_all_sensor_data(new_state.sensor_table)
-    Enum.each(new_state.numen_pids, fn pid ->
-      GenServer.cast(pid, {:process_sensor_data, data})
-    end)
-
-    Logger.debug("Ontos #{state.agent_id} received sensor data: #{inspect([sensor_id, values])}")
-    {:noreply, new_state}
   end
 
   @impl true

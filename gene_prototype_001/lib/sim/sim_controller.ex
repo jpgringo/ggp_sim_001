@@ -4,38 +4,41 @@ defmodule GenePrototype0001.Sim.SimController do
   use GenServer
   require Logger
 
+  alias GenePrototype0001.Sim.UdpConnectionServer
+
+  @sim_controller_name :SimController
 
   #============================================= API ============================================= #
 
   def current_sim_state do
-    GenServer.call(:SimController, :current_sim_state)
+    GenServer.call(@sim_controller_name, :current_sim_state)
   end
 
 
   def start_scenario(params) do
-    GenServer.call(:SimController, {:start_scenario, params})
+    GenServer.call(@sim_controller_name, {:start_scenario, params})
   end
 
   def handle_sim_started(params) do
-    GenServer.cast(:SimController, {:sim_ready, params})
+    GenServer.cast(@sim_controller_name, {:sim_ready, params})
   end
 
   def stop_scenario(scenario_id) do
-    GenServer.call(:SimController, {:stop_scenario, scenario_id})
+    GenServer.call(@sim_controller_name, {:stop_scenario, scenario_id})
   end
 
   def handle_sim_stopped(params) do
-    GenServer.cast(:SimController, {:sim_stopped, params})
+    GenServer.cast(@sim_controller_name, {:sim_stopped, params})
   end
 
   def panic do
-    GenServer.call(:SimController, :panic)
+    GenServer.call(@sim_controller_name, :panic)
   end
 
   #======================================= IMPLEMENTATION ======================================== #
 
   def start_link(_opts) do
-    name = :SimController
+    name = @sim_controller_name
     GenServer.start_link(__MODULE__, [name: name], name: name)
   end
 
@@ -58,14 +61,14 @@ defmodule GenePrototype0001.Sim.SimController do
   @impl true
   def handle_call({:start_scenario, params}, _from, state) do
     :logger.debug("#{state.name} - handling start_scenario call - param: #{inspect(params)}")
-    GenServer.call(:SimUdpConnector, {:send_command, "start_scenario", params})
+    UdpConnectionServer.send_start_scenario(params)
     {:reply, :ok, %{state | simulator_running: true, scenario_in_progress: true}}
   end
 
   @impl true
   def handle_call(:stop_scenario, _from, state) do
     DirectDebug.info("#{state.name} - handling generic stop_scenario call")
-    GenServer.call(:SimUdpConnector, {:send_command, "stop_scenario", nil})
+    UdpConnectionServer.send_stop_scenario(nil)
     {:reply, :ok, %{state | simulator_running: false, scenario_in_progress: false}}
   end
 
@@ -81,7 +84,7 @@ defmodule GenePrototype0001.Sim.SimController do
   def handle_call(:panic, _from, state) do
     DirectDebug.info("#{state.name} - handling panic call")
     resp = GenePrototype0001.Sim.ScenarioSupervisor.stop_all()
-    GenServer.call(:SimUdpConnector, {:send_command, "panic", nil})
+    UdpConnectionServer.panic
     DirectDebug.info("#{state.name} - panic result: #{inspect(resp)}")
     {:reply, resp,%{state | scenario_in_progress: false}}
   end

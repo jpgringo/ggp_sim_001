@@ -22,6 +22,18 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     )
   end
 
+  def send_start_scenario(opts) do
+    GenServer.call(@sim_connector_name, {:send_command, "start_scenario", opts})
+  end
+
+  def send_stop_scenario(opts) do
+    GenServer.call(@sim_connector_name, {:send_command, "stop_scenario", opts})
+  end
+
+  def panic do
+    GenServer.call(@sim_connector_name, {:send_command, "panic", nil})
+  end
+
   #======================================= IMPLEMENTATION ======================================== #
 
   def start_link(opts) do
@@ -171,15 +183,6 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   end
 
   #  ============================== SENSOR UPDATE HANDLERS ============================
-  defp handle_rpc_call("sensor_data", %{"agent" => agent_id, "data" => data}, state) do
-    case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
-      [{_pid, _}] ->
-        GenePrototype0001.Onta.Ontos.handle_sensor_data(agent_id, data)
-      [] ->
-        Logger.warning("1. Received sensor data for unknown agent #{agent_id}")
-    end
-    {:noreply, state}
-  end
 
   defp handle_rpc_call("batch", batch, state) do
     DirectDebug.extra("#{state.name} - handling batch: #{inspect(batch)}")

@@ -5,6 +5,8 @@ defmodule GenePrototype0001.Sim.Scenario do
   require Logger
   require DirectDebug
 
+  alias GenePrototype0001.Onta.Ontos
+
   #============================================= API ============================================= #
 
   def get_onta(scenario_pid) do
@@ -13,9 +15,9 @@ defmodule GenePrototype0001.Sim.Scenario do
 
   def route_sensor_data_batch(scenario, entries) do
     case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario) do
-      [{pid, _}] ->
-        DirectDebug.extra("Scenario - found scenario (#{inspect(pid)})")
-        GenServer.cast(pid, {:sensor_batch, entries})
+      [{scenario_pid, _}] ->
+        DirectDebug.extra("Scenario - found scenario (#{inspect(scenario_pid)})")
+        GenServer.cast(scenario_pid, {:sensor_batch, entries})
       [] ->
         DirectDebug.warning("Received sensor data for unknown scenario #{scenario}", true)
     end
@@ -72,9 +74,10 @@ defmodule GenePrototype0001.Sim.Scenario do
       agent_id = "#{state.id}_#{agent}"
       DirectDebug.info("Scenario '#{state.id}' will send event batch to ontos #{inspect(agent_id)}: #{inspect(events)}")
       case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
-        [{pid, _}] ->
-          DirectDebug.extra("Found Ontos #{inspect(pid)}")
-          GenServer.cast(pid, {:sensor_batch, events})
+        [{ontos_pid, _}] ->
+          DirectDebug.extra("Found Ontos #{inspect(ontos_pid)}")
+          Ontos.handle_sensor_data(ontos_pid, events)
+
         [] ->
           DirectDebug.warning("Could NOT find agent #{agent_id}")
       end
