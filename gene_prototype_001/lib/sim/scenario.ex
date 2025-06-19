@@ -6,6 +6,7 @@ defmodule GenePrototype0001.Sim.Scenario do
   require DirectDebug
 
   alias GenePrototype0001.Onta.Ontos
+  alias GenePrototype0001.Reports.ScenarioRunReportServer
 
   #============================================= API ============================================= #
 
@@ -92,9 +93,13 @@ defmodule GenePrototype0001.Sim.Scenario do
 
   @impl true
   def terminate(reason, state) do
-    DirectDebug.info("Terminating scenario #{state.name} with reason: #{inspect(reason)}", true)
+    DirectDebug.info("Terminating scenario #{state.name} with reason: #{inspect(reason)}. state: #{inspect(state)}", true)
     # Stop the OntaSupervisor; since we started it directly, we need to exit it explicitly
-    Logger.debug("Will attempt to terminate OntaSupervisor process '#{inspect(state.ontasup)}'")
+    %{scenario_name: resource_id, id: run_id, agents: agents} = state
+    agent_summaries = Enum.map(agents, fn agent ->
+      Map.merge(agent, %{"events" => %{"actuators" => Ontos.get_event_count("#{state.id}_#{agent["id"]}", :actuator)}})
+    end)
+    ScenarioRunReportServer.submit_report(NaiveDateTime.local_now() |> NaiveDateTime.to_iso8601(), resource_id, run_id, agent_summaries)
     if Process.whereis(:pg) != nil do
       Enum.each(:pg.get_members(:scenario_events), & send(&1, {:scenario_terminated, state}))
     end

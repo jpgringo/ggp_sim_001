@@ -15,6 +15,16 @@ defmodule GenePrototype0001.Onta.Ontos do
     GenServer.call(via_tuple(agent_id), :get_state)
   end
 
+  def get_event_count(agent_id, event_type) do
+    state = GenServer.call(via_tuple(agent_id), :get_state)
+    case event_type do
+      :actuator -> state.actuators_issued
+      _ ->
+        :logger.error("Ontos '#{agent_id}' - request for unknown event type #{event_type}")
+        0
+    end
+  end
+
   def get_numina(ontos_pid) when is_pid(ontos_pid) do
     GenServer.call(ontos_pid, :get_numina)
   end
@@ -74,6 +84,7 @@ defmodule GenePrototype0001.Onta.Ontos do
       agent_id: unique_id,
       raw_id: agent_id,
       available_actuators: available_actuators,
+      actuators_issued: 0,
       numen_supervisor: numen_sup,
       numen_pids: numen_pids,
       sensor_table: table_name
@@ -147,16 +158,18 @@ defmodule GenePrototype0001.Onta.Ontos do
   @impl true
   def handle_cast({:numen_commands, commands}, state) do
     # Process commands from Numina
-    Enum.each(commands, fn command ->
+    new_actuator_sends = Enum.reduce(commands, 0, fn command, acc ->
       case command do
         {:actuator_data, payload} ->
           DirectDebug.info("Ontos #{state.agent_id} sending actuator data: #{inspect(payload)}")
           UdpConnectionServer.send_actuator_data(state.raw_id, payload)
+          acc + 1
         _ ->
           Logger.warning("Ontos #{state.agent_id} received unknown command: #{inspect(command)}")
+          acc
       end
     end)
-    {:noreply, state}
+    {:noreply, %{state | actuators_issued: state.actuators_issued + new_actuator_sends}}
   end
 
   # Helper functions
