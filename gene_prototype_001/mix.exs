@@ -13,7 +13,16 @@ defmodule GenePrototype0001.MixProject do
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.html": :test
-      ]
+      ],
+      docs: &docs/0
+    ]
+  end
+
+  defp docs do
+    [
+      main: "GenePrototype0001", # The main page in the docs
+#      logo: "path/to/logo.png",
+      extras: ["README.md"]
     ]
   end
 
@@ -30,6 +39,7 @@ defmodule GenePrototype0001.MixProject do
     [
       {:bandit, "~> 1.6.11"},
       {:excoveralls, "~> 0.18.5"},
+      {:ex_doc, "~> 0.38.2"},
       {:jason, "~> 1.4"},
       {:nanoid, "~> 2.1"},
       {:nx, "~> 0.9.2"},
