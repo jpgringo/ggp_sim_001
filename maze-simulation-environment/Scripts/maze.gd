@@ -113,7 +113,7 @@ func create_maze():
 	generate_perimeter()
 	generate_maze_walls()
 	create_spawn_points()
-	if maze_def is Dictionary and maze_def.target.size() == 2:
+	if maze_def is Dictionary and maze_def.target.size() >= 2:
 		create_target()
 
 # Create and visualize spawn points
@@ -152,7 +152,7 @@ func generate_maze_walls():
 func create_target():
 	var area = Area2D.new()
 	var shape = RectangleShape2D.new()
-	shape.extents = Vector2(4,4)
+	shape.extents = Vector2(16,16)
 
 	var collision = CollisionShape2D.new()
 	collision.shape = shape

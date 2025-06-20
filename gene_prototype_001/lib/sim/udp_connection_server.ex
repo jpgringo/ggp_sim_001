@@ -171,6 +171,11 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, state}
   end
 
+  defp handle_rpc_call("reached_target", %{"id" => _agent_id}, state) do
+    # this is emitted by sims, but we don't need to handle it at this time (onta are created when the scenario is initialize)
+    {:noreply, state}
+  end
+
   defp handle_rpc_call("agent_destroyed", %{"id" => agent_id}, state) do
     case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
       [{pid, _}] ->

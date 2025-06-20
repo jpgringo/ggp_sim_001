@@ -3,8 +3,9 @@ defmodule GenePrototype0001.Test.TestSupport do
 
   use ExUnit.Case
 
-  alias GenePrototype0001.Sim.ScenarioSupervisor
   alias GenePrototype0001.Test.MessageConfirmation
+  alias GenePrototype0001.Sim.ScenarioSupervisor
+  alias GenePrototype0001.Reports.ScenarioRunReportServer
   alias GenePrototype0001.Test.TestingSimulator
 
   @alphabet "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -145,8 +146,6 @@ def check_for_scenario(resource_id, run_id, should_exist? \\true) do
   end
 end
 
-
-
 def make_agent_params(agent_count, actuator_count, as_json? \\ false) do
   #  %{"agents" => [%{"actuators" => 1, "id" => "48184165825"}, %{"actuators" => 1, "id" => "48284829114"}], "scenario" => "map_0000.json", "unique_id" => "VDSCDZM0"}
   agent_params = Enum.map(1..agent_count, fn _ -> %{"id" => Nanoid.generate(15), "actuators" => actuator_count} end)
@@ -156,5 +155,56 @@ def make_agent_params(agent_count, actuator_count, as_json? \\ false) do
     agent_params
   end
 end
+
+# ============ DEVELOPED DURING REPORTING =========================#
+
+  def run_scenario_with_report(resource_id, run_id, agent_ids, sensor_event_fn \\ nil) do
+    # initialize the scenario
+    DirectDebug.info("about to start scenario...")
+    case start_scenario(resource_id, run_id, agent_ids, 1) do
+      :error -> nil
+      s -> s
+    end
+
+    if is_function(sensor_event_fn) do
+      sensor_event_fn.()
+    end
+
+    %{scenario_name: scenario_resource_id, id: run_id, agents: agents} = case stop_scenario(resource_id, run_id) do
+      :error -> assert false, "did not receive scenario termination message"
+      result -> DirectDebug.warning("received scenario termination! result: #{inspect(result)}")
+                result
+    end
+
+    case ScenarioRunReportServer.get_report(resource_id, run_id) do
+      report when report.scenario_run_id == run_id -> report
+      report -> nil
+    end
+
+
+  end
+
+  def make_sensor_event_generator(run_id, agent_params, period) do
+    DirectDebug.extra("make_sensor_event_generator - agent params: #{inspect(agent_params)}")
+    fn () ->
+      # some Elixir-style fake anonymous recursion here
+      send_event = fn
+        _f, [] -> :ok
+        f, params -> index = :rand.uniform(length(params)) - 1
+                     {agent_id, remaining} = Enum.at(params, index)
+                     DirectDebug.warning("would generate event for agent #{agent_id} (#{remaining} remaining)")
+                     TestingSimulator.send_sensor_data_batch(run_id, [{agent_id, [0, [0, 0, 0]]}])
+                     Process.sleep(period)
+                     cond do
+                       remaining > 1 ->
+                         f.(f, List.update_at(params, index, fn {_k, v} -> {agent_id, remaining - 1} end))
+                       remaining == 1 ->
+                         f.(f, List.delete_at(params, index))
+                     end
+      end
+
+      send_event.(send_event, agent_params) # ... by passing the function to itself as an argument
+    end
+  end
 
 end

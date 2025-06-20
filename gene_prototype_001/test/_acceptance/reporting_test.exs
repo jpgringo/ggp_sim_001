@@ -42,7 +42,7 @@ defmodule GenePrototype0001.Test.Acceptance.Reporting do
       run_id = TestSupport.make_run_id()
       agent_ids = ["A"]
 
-      run_scenario_with_report(resource_id, run_id, agent_ids)
+      TestSupport.run_scenario_with_report(resource_id, run_id, agent_ids)
 
       case ScenarioRunReportServer.get_report(resource_id, run_id) do
         report when report.scenario_run_id == run_id -> assert true
@@ -65,18 +65,19 @@ defmodule GenePrototype0001.Test.Acceptance.Reporting do
       triggering_sensor_event_counts = [2,4,6,8]
       agent_params = Enum.zip([agent_ids, triggering_sensor_event_counts])
 
-      sensor_event_generator = make_sensor_event_generator(run_id,
+      sensor_event_generator = TestSupport.make_sensor_event_generator(run_id,
         agent_params,
         50)
 
-      run_scenario_with_report(resource_id, run_id, agent_ids, sensor_event_generator)
+      report = TestSupport.run_scenario_with_report(resource_id, run_id, agent_ids, sensor_event_generator)
 
-      report = case ScenarioRunReportServer.get_report(resource_id, run_id) do
-        report when report.scenario_run_id == run_id -> report
-        report -> assert false, "expected report with run_id '#{run_id}'; got #{inspect(report)}"
+      case report do
+        r when r.scenario_run_id == run_id -> r
+        r -> assert false, "expected report with run_id '#{run_id}'; got #{inspect(r)}"
       end
 
-      DirectDebug.section("report! #{inspect(report)}")
+
+      DirectDebug.info("report! #{inspect(report)}")
 
       # confirm the number of agents and the correct ids
       assert length(report.agents) == length(agent_ids)
@@ -96,48 +97,6 @@ defmodule GenePrototype0001.Test.Acceptance.Reporting do
             assert actuators == expected_actuators, "actuators: #{inspect(actuators)}"
         end
       end
-    end
-  end
-
-  defp run_scenario_with_report(resource_id, run_id, agent_ids, sensor_event_fn \\ nil) do
-    # initialize the scenario
-    DirectDebug.info("about to start scenario...")
-    case TestSupport.start_scenario(resource_id, run_id, agent_ids, 1) do
-      :error -> nil
-      s -> s
-    end
-
-    if is_function(sensor_event_fn) do
-      sensor_event_fn.()
-    end
-
-    %{scenario_name: scenario_resource_id, id: run_id, agents: agents} = case TestSupport.stop_scenario(resource_id, run_id) do
-      :error -> assert false, "did not receive scenario termination message"
-      result -> DirectDebug.warning("received scenario termination! result: #{inspect(result)}")
-                result
-    end
-  end
-
-  defp make_sensor_event_generator(run_id, agent_params, period) do
-    DirectDebug.extra("make_sensor_event_generator - agent params: #{inspect(agent_params)}")
-    fn () ->
-      # some Elixir-style fake anonymous recursion here
-      send_event = fn
-        _f, [] -> :ok
-        f, params -> index = :rand.uniform(length(params)) - 1
-                   {agent_id, remaining} = Enum.at(params, index)
-                   DirectDebug.warning("would generate event for agent #{agent_id} (#{remaining} remaining)")
-                   TestingSimulator.send_sensor_data_batch(run_id, [{agent_id, [0, [0, 0, 0]]}])
-                   Process.sleep(period)
-                   cond do
-                     remaining > 1 ->
-                      f.(f, List.update_at(params, index, fn {_k, v} -> {agent_id, remaining - 1} end))
-                     remaining == 1 ->
-                      f.(f, List.delete_at(params, index))
-                  end
-      end
-
-      send_event.(send_event, agent_params) # ... by passing the function to itself as an argument
     end
   end
 
