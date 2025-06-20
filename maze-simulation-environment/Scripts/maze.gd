@@ -150,9 +150,13 @@ func generate_maze_walls():
 					maze_wall_layer.set_cell(Vector2i(x+1, y+1 + map_offset), UNBREAKABLE_TILE_ID, Vector2i(0, 0), 0)
 
 func create_target():
+	var tile_size = tilemap.tile_set.tile_size
+	var tile_scale = tilemap.scale
+	var adjusted_size = (tile_size / 2.0) * tile_scale * 0.9 # the 0.9 is to avoid math errors that exceed the tile size
+	print("tile_size: %s -> %s; tile_scale: %s" % [tile_size, adjusted_size, tile_scale])
 	var area = Area2D.new()
 	var shape = RectangleShape2D.new()
-	shape.extents = Vector2(16,16)
+	shape.extents = adjusted_size
 
 	var collision = CollisionShape2D.new()
 	collision.shape = shape
@@ -165,8 +169,7 @@ func create_target():
 	target.position = -shape.extents
 	area.add_child(target)
 
-	var target_position = grid_to_world(Vector2(GRID_COLUMNS/2, GRID_ROWS/2))
-	target_position = grid_to_world(Vector2(maze_def.target[0]+1,maze_def.target[1]+1))
+	var target_position = grid_to_world(Vector2(maze_def.target[0]+1,maze_def.target[1]+1))
 
 	area.position = target_position
 	area.body_entered.connect(_on_body_entered)
