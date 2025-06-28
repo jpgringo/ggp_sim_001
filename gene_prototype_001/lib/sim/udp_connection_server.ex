@@ -5,6 +5,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
 
   alias GenePrototype0001.Sim.SimController
   alias GenePrototype0001.SimulationSocket
+  alias GenePrototype0001.Sim.Scenario
   alias GenePrototype0001.Sim.ScenarioSupervisor
 
   @sim_connector_name :SimUdpConnector
@@ -133,7 +134,7 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
   defp handle_rpc_call("sim_stopping", params, state) do
     Logger.info("Sim stopping!!: #{inspect(params)}")
     # Forward batch to WebSocket clients
-    SimController.handle_sim_stopped(params)
+    SimController.on_sim_stopped(params)
     SimulationSocket.broadcast_stop(params)
 
     {:noreply, %{state | sim_ready: false}}
@@ -171,8 +172,9 @@ defmodule GenePrototype0001.Sim.UdpConnectionServer do
     {:noreply, state}
   end
 
-  defp handle_rpc_call("reached_target", %{"id" => _agent_id}, state) do
-    # this is emitted by sims, but we don't need to handle it at this time (onta are created when the scenario is initialize)
+  defp handle_rpc_call("reached_target", %{"scenario" => scenario_id, "agent" => agent_id}, state) do
+    DirectDebug.info("SimUdpConnector - handling 'reached_target' method. scenario=#{scenario_id}; agent=#{agent_id}")
+    Scenario.on_agent_reached_target(scenario_id, agent_id)
     {:noreply, state}
   end
 

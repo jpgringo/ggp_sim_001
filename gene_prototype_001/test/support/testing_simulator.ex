@@ -24,6 +24,15 @@ defmodule GenePrototype0001.Test.TestingSimulator do
     GenServer.call(@testing_simulator_name, {:send_sensor_data_batch, run_id, sensor_data_batch})
   end
 
+  def send_target_reached_event(run_id, agent_id) do
+    DirectDebug.error("TestingSimulator.send_target_reached_event")
+    GenServer.call(@testing_simulator_name, {:send_target_reached, run_id, agent_id})
+  end
+
+  def quit() do
+    GenServer.call(@testing_simulator_name, :quit)
+  end
+
   #======================================= IMPLEMENTATION ======================================== #
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: @testing_simulator_name)
@@ -122,6 +131,41 @@ defmodule GenePrototype0001.Test.TestingSimulator do
           %{scenario: run_id, agent: agent, data: sensor_data}
         end)
       },
+    })
+
+    :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:send_target_reached, run_id, agent_id},
+        _from,
+        %{socket: socket, send_ip: send_ip, send_port: send_port} = state) do
+    DirectDebug.section("TestingSimulator received send_target_reached message: #{inspect(run_id)}-#{inspect(agent_id)}")
+
+    notification = Jason.encode!(%{
+      jsonrpc: "2.0",
+      method: "reached_target",
+      params: %{
+        scenario: run_id,
+        agent: agent_id
+      },
+    })
+
+    :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call(:quit,
+        _from,
+        %{socket: socket, send_ip: send_ip, send_port: send_port} = state) do
+    DirectDebug.section("TestingSimulator received quit message")
+
+    notification = Jason.encode!(%{
+      jsonrpc: "2.0",
+      method: "sim_stopping",
+      params: %{},
     })
 
     :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)

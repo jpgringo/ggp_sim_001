@@ -207,4 +207,34 @@ end
     end
   end
 
+  def make_complete_run_event_generator(run_id, agent_params, period) do
+    DirectDebug.extra("make_sensor_event_generator - agent params: #{inspect(agent_params)}")
+    fn () ->
+      # some Elixir-style fake anonymous recursion here
+      send_event = fn
+        _f, [] -> DirectDebug.warning("make_complete_run_event_generator - DONE!")
+                  :ok
+        f, params -> index = :rand.uniform(length(params)) - 1
+                     {agent_id, remaining} = Enum.at(params, index)
+                     DirectDebug.warning("make_complete_run_event_generator - generating event for agent #{agent_id} (#{remaining} remaining)")
+                     TestingSimulator.send_sensor_data_batch(run_id, [{agent_id, [0, [0, 0, 0]]}])
+                     Process.sleep(period)
+                     cond do
+                       remaining > 1 ->
+                         f.(f, List.update_at(params, index, fn {_k, v} -> {agent_id, remaining - 1} end))
+                       remaining == 1 ->
+                         # first, send a target reached event
+                         DirectDebug.info("about to send a target_reached event: #{run_id}/#{agent_id}")
+                         TestingSimulator.send_target_reached_event(run_id, agent_id)
+                         f.(f, List.delete_at(params, index))
+                       true ->
+                         DirectDebug.error("NO remaining values: #{run_id}/#{agent_id}")
+
+                     end
+      end
+
+      send_event.(send_event, agent_params) # ... by passing the function to itself as an argument
+    end
+  end
+
 end

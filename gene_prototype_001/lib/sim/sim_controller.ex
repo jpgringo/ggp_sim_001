@@ -5,6 +5,7 @@ defmodule GenePrototype0001.Sim.SimController do
   require Logger
 
   alias GenePrototype0001.Sim.UdpConnectionServer
+  alias GenePrototype0001.Sim.Scenario
 
   @sim_controller_name :SimController
 
@@ -23,11 +24,15 @@ defmodule GenePrototype0001.Sim.SimController do
     GenServer.cast(@sim_controller_name, {:sim_ready, params})
   end
 
+  def on_scenario_complete(scenario_id) do
+    GenServer.call(:complete_scenario, scenario_id)
+  end
+
   def stop_scenario(scenario_id) do
     GenServer.call(@sim_controller_name, {:stop_scenario, scenario_id})
   end
 
-  def handle_sim_stopped(params) do
+  def on_sim_stopped(params) do
     GenServer.cast(@sim_controller_name, {:sim_stopped, params})
   end
 
@@ -73,6 +78,12 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   @impl true
+  def handle_call({:scenario_completed, scenario_id}, _from, state) do
+#    UdpConnectionServer.send_stop_scenario(scenario_id)
+    {:reply, :ok, state}
+  end
+
+  @impl true
   def handle_call({:stop_scenario, scenario_id}, _from, state) do
     DirectDebug.info("#{state.name} - handling stop_scenario call for scenario #{scenario_id}")
     result = GenServer.call(:SimUdpConnector, {:send_command, "stop_scenario", scenario_id})
@@ -103,6 +114,7 @@ defmodule GenePrototype0001.Sim.SimController do
 
   def handle_cast({:sim_stopped, _params}, state) do
     :logger.debug("SimController - marking as STOPPED")
+    Scenario.destroy_all()
     {:noreply, %{state | simulator_running: false}}
   end
 

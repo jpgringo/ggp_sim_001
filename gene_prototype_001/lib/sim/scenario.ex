@@ -7,6 +7,8 @@ defmodule GenePrototype0001.Sim.Scenario do
 
   alias GenePrototype0001.Onta.Ontos
   alias GenePrototype0001.Reports.ScenarioRunReportServer
+  alias GenePrototype0001.Sim.ScenarioSupervisor
+  alias GenePrototype0001.Sim.SimController
 
   #============================================= API ============================================= #
 
@@ -22,6 +24,23 @@ defmodule GenePrototype0001.Sim.Scenario do
       [] ->
         DirectDebug.warning("Received sensor data for unknown scenario #{scenario}", true)
     end
+  end
+
+  def on_agent_reached_target(scenario_id, agent_id) do
+    case Registry.lookup(GenePrototype0001.Sim.ScenarioRegistry, scenario_id) do
+      [{scenario_pid, _}] ->
+        GenServer.cast(scenario_pid, {:close_ontos, agent_id})
+      [] ->
+        DirectDebug.warning("Received sensor data for unknown scenario #{scenario_id}", true)
+    end
+  end
+
+  def destroy_all() do
+    Enum.each(Enum.map(ScenarioSupervisor.active_scenarios(), fn {_, pid, _, _} -> pid end), & destroy(&1))
+  end
+
+  def destroy(scenario_pid) do
+    GenServer.cast(scenario_pid, :destroy)
   end
 
   #======================================= IMPLEMENTATION ======================================== #
@@ -86,9 +105,41 @@ defmodule GenePrototype0001.Sim.Scenario do
     {:noreply, state}
   end
 
+  @impl true
+  def handle_cast({:close_ontos, agent_id}, state) do
+    DirectDebug.info("#{state.name} will close Ontos #{inspect(agent_id)} (active onta: #{inspect(length(DynamicSupervisor.which_children(state.ontasup)))})")
+    {ontos_pid, ontos_final_state} = Ontos.close("#{state.id}_#{agent_id}")
+    DirectDebug.info("#{state.name} got final state for Ontos #{inspect(agent_id)}: #{inspect(ontos_final_state)}")
+    closed_onta = [ontos_final_state | Map.get(state, :closed_onta, [])]
+    DirectDebug.info("#{state.name} - closed_onta: #{inspect(closed_onta)}")
+    case DynamicSupervisor.terminate_child(state.ontasup, ontos_pid) do
+      :ok -> :ok
+      {:error, reason} ->
+        DirectDebug.error("#{state.name} could not terminate #{inspect(agent_id)}: #{inspect(reason)}")
+    end
+
+    if length(DynamicSupervisor.which_children(state.ontasup)) == 0 do
+      GenePrototype0001.Sim.SimController.on_scenario_complete(state.id)
+    end
+    {:noreply, Map.merge(state, %{closed_onta: closed_onta})}
+  end
+
+  def handle_cast(:destroy, state) do
+    :logger.info("destroying #{state.name}...")
+    {:stop, {:shutdown, :aborted}, state}
+  end
+
   def handle_cast(msg, state) do
     :logger.warning("#{state.name} received unknown cast: #{inspect(msg)}")
     {:noreply, state}
+  end
+
+  @impl true
+  def terminate({:shutdown, :aborted}, state) do
+    if Process.whereis(:pg) != nil do
+      Enum.each(:pg.get_members(:scenario_events), & send(&1, {:scenario_terminated, :aborted, state}))
+    end
+    :ok
   end
 
   @impl true
@@ -96,10 +147,10 @@ defmodule GenePrototype0001.Sim.Scenario do
     DirectDebug.info("Terminating scenario #{state.name} with reason: #{inspect(reason)}. state: #{inspect(state)}", true)
     # Stop the OntaSupervisor; since we started it directly, we need to exit it explicitly
     %{scenario_name: resource_id, id: run_id, agents: agents} = state
-    agent_summaries = Enum.map(agents, fn agent ->
-      Map.merge(agent, %{"events" => %{"actuators" => Ontos.get_event_count("#{state.id}_#{agent["id"]}", :actuator)}})
-    end)
-    ScenarioRunReportServer.submit_report(NaiveDateTime.local_now() |> NaiveDateTime.to_iso8601(), resource_id, run_id, agent_summaries)
+#    agent_summaries = Enum.map(agents, fn agent ->
+#      Map.merge(agent, %{"events" => %{"actuators" => Ontos.get_event_count("#{state.id}_#{agent["id"]}", :actuator)}})
+#    end)
+#    ScenarioRunReportServer.submit_report(NaiveDateTime.local_now() |> NaiveDateTime.to_iso8601(), resource_id, run_id, agent_summaries)
     if Process.whereis(:pg) != nil do
       Enum.each(:pg.get_members(:scenario_events), & send(&1, {:scenario_terminated, state}))
     end

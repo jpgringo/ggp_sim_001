@@ -69,8 +69,13 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
   end
 
   def stop_all() do
-    Enum.each(DynamicSupervisor.which_children(__MODULE__), fn {_, child_pid, _, _} ->
-                                                              DynamicSupervisor.terminate_child(__MODULE__, child_pid)
-                                                            end )
+    Enum.each(DynamicSupervisor.which_children(__MODULE__),
+      fn {_, child_pid, _, _} ->
+        DynamicSupervisor.terminate_child(__MODULE__, child_pid)
+      end )
+  end
+
+  def active_scenarios do
+    DynamicSupervisor.which_children(__MODULE__)
   end
 end

@@ -131,7 +131,92 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
     end
   end
 
+  describe "start/stop scenarios" do
+    test "start scenario" do
+      DirectDebug.section("starting 'start scenario'...")
 
+      :pg.join(:scenario_events, self())
+
+      resource_id = TestSupport.make_resource_id()
+      run_id = TestSupport.make_run_id()
+
+      %{pid: scenario_pid} = case TestSupport.start_scenario(resource_id, run_id, [], 1) do
+        :error -> nil
+        s -> s
+      end
+
+      assert Process.alive?(scenario_pid), "scenario process should be alive"
+    end
+
+    test "destroy scenario when sim quits" do
+      DirectDebug.section("starting 'destroy scenario when sim quits'...")
+
+      :pg.join(:scenario_events, self())
+
+      resource_id = TestSupport.make_resource_id()
+      run_id = TestSupport.make_run_id()
+
+      %{pid: scenario_pid} = case TestSupport.start_scenario(resource_id, run_id, [], 1) do
+        :error -> nil
+        s -> s
+      end
+
+      TestingSimulator.quit()
+
+      MessageConfirmation.wait_for_confirmation(
+        fn msg ->
+          case msg do
+            {:scenario_terminated, reason, scenario_details} -> DirectDebug.info("destroy scenario when sim quits - scenario terminated for reason '#{reason}': #{inspect(scenario_details)}")
+                                                        {:ok, scenario_details}
+            msg -> DirectDebug.warning("destroy scenario when sim quits - got msg: #{inspect(msg)}")
+                   :error
+          end
+        end, "scenario termination confirmation not received", 2000)
+
+      assert !Process.alive?(scenario_pid), "scenario process should NOT be alive"
+    end
+
+    test "auto stop scenario on all agents reaching target" do
+      DirectDebug.section("starting 'auto stop scenario on all agents reaching target'...")
+
+      :pg.join(:scenario_events, self())
+
+      resource_id = TestSupport.make_resource_id()
+      run_id = TestSupport.make_run_id()
+      #      agent_ids = ["A", "B", "C", "D"]
+      agent_ids = ["A", "B"]
+      #      triggering_sensor_event_counts = [1,2,3,4]
+      triggering_sensor_event_counts = [1, 1]
+      agent_params = Enum.zip([agent_ids, triggering_sensor_event_counts])
+
+      %{pid: scenario_pid} = case TestSupport.start_scenario(resource_id, run_id, agent_ids, 1) do
+        :error -> nil
+        s -> s
+      end
+
+      DirectDebug.section("scenario_started: #{inspect(scenario_pid)}")
+
+      TestSupport.make_complete_run_event_generator(run_id,
+        agent_params,
+        50).()
+
+      case Process.whereis(:pg) do
+        _ ->         MessageConfirmation.wait_for_confirmation(
+                       fn msg ->
+                         case msg do
+                           {:scenario_terminated, scenario_details} -> DirectDebug.info("auto stop scenario on all agents reaching target - scenario terminated: #{inspect(scenario_details)}")
+                                                                       {:ok, scenario_details}
+                           msg -> DirectDebug.warning("auto stop scenario on all agents reaching target - got msg: #{inspect(msg)}")
+                                  :error
+                         end
+                       end, "scenario termination confirmation not received", 2000)
+
+      end
+
+      assert !Process.alive?(scenario_pid), "scenario should have terminated"
+      assert false
+    end
+  end
   def handle_info(msg, state) do
     DirectDebug.warning("unknown message: #{inspect(msg)}")
     {:noreply, state}

@@ -45,6 +45,17 @@ defmodule GenePrototype0001.Onta.Ontos do
     GenServer.cast(ontos_pid, {:numen_commands, commands})
   end
 
+  def close(agent_id) do
+    case Registry.lookup(GenePrototype0001.Onta.OntosRegistry, agent_id) do
+      [{ontos_pid, _}] ->
+        DirectDebug.info("Found Ontos #{inspect(ontos_pid)}")
+        GenServer.call(via_tuple(agent_id), :close)
+      [] ->
+        DirectDebug.warning("Could NOT find agent #{agent_id}")
+    end
+
+  end
+
   #======================================= IMPLEMENTATION ======================================== #
 
   # Client API
@@ -128,6 +139,18 @@ defmodule GenePrototype0001.Onta.Ontos do
   @impl true
   def handle_call(:get_numina, _from, state) do
     {:reply, {:ok, state.numen_pids}, state}
+  end
+
+  @impl true
+  def handle_call(:close, _from, state) do
+    DirectDebug.section("Ontos '#{state.agent_id}' closing")
+    {:reply, {self(), Map.drop(state, [:numen_pids, :numen_supervisor, :sensor_table])}, state}
+  end
+
+  @impl true
+  def handle_call(msg, _from, state) do
+    DirectDebug.warning("Ontos #{state.agent_id} - unknown message: #{inspect(msg)}")
+    {:reply, :ok, state}
   end
 
 

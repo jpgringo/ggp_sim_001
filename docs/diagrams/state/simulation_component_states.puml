@@ -1,0 +1,83 @@
+@startuml
+
+'left to right direction
+
+skinparam state {
+  BackgroundColor<<A>> LightBlue
+  BackgroundColor<<B>> LightGreen
+  BorderColor<<toplevel>> Grey
+  BorderColor<<level2>> Silver
+
+}
+
+state "Scenario" as SC <<toplevel>> {
+	state uninited <<A>>
+	state started <<A>>
+	state processing <<A>>
+	state "closing ontos" as CO <<A>>
+	state c1 <<choice>>
+	state c1a <<fork>>
+	state c2 <<choice>>
+	state summarizing <<A>>
+	state closing <<A>>
+	state "destroying" as D1 <<A>>
+	started --> processing
+	processing --> CO : close ontos [agent reached target]
+	CO --> c1 : record ontos state
+	c1 --> processing : onta count > 0
+	c1 --> c1a : onta count = 0
+	c1a --> summarizing
+	processing --> c2 : [stop]
+	c2 --> summarizing : onta count > 0
+	c2 --> closing : onta count = 0
+	summarizing --> closing
+	closing --> [*]
+	processing --> D1 : [sim_stopping]
+	D1 --> [*]
+}
+
+state controller {
+    [*] --> uninited : <size:16><color:red>**start scenario**
+}
+
+controller --> processing : stop
+
+state "Simulation Environment" as SE <<toplevel>> {
+    state up
+    state down
+    state c3 <<choice>>
+    up --> c3 : quitting
+    c3 --> down
+    down --> [*]
+    state "Remote Scenario" as RS <<level2>> {
+	state idle <<B>>
+	state loading <<B>>
+	state loaded <<B>>
+	state running <<B>>
+	note right of running
+	    continuously fires
+	    sensor batches and
+	    other messages
+	end note
+	state "destroying" as D2 <<B>>
+	idle --> loading : load
+	loading --> loaded : load
+	loaded --> running : run
+	running --> idle : [stop]
+	running --> D2 : [sim_stopping]
+	}
+}
+
+c1a --> running : stop
+c2 --> running : stop
+uninited --> idle : start
+loaded --> started: load
+running --> processing : sensor batch
+running --> processing : agent reached target
+CO --> running : terminate agent
+closing --> running : stop
+c3 --> processing : sim_stopping
+c3 --> running : sim_stopping
+
+
+@enduml
