@@ -170,7 +170,7 @@ end
       sensor_event_fn.()
     end
 
-    %{scenario_name: scenario_resource_id, id: run_id, agents: agents} = case stop_scenario(resource_id, run_id) do
+    %{scenario_name: _scenario_resource_id, id: run_id, agents: _agents} = case stop_scenario(resource_id, run_id) do
       :error -> assert false, "did not receive scenario termination message"
       result -> DirectDebug.warning("received scenario termination! result: #{inspect(result)}")
                 result
@@ -178,7 +178,7 @@ end
 
     case ScenarioRunReportServer.get_report(resource_id, run_id) do
       report when report.scenario_run_id == run_id -> report
-      report -> nil
+      _report -> nil
     end
 
 
@@ -197,7 +197,7 @@ end
                      Process.sleep(period)
                      cond do
                        remaining > 1 ->
-                         f.(f, List.update_at(params, index, fn {_k, v} -> {agent_id, remaining - 1} end))
+                         f.(f, List.update_at(params, index, fn {_k, _v} -> {agent_id, remaining - 1} end))
                        remaining == 1 ->
                          f.(f, List.delete_at(params, index))
                      end
@@ -221,7 +221,7 @@ end
                      Process.sleep(period)
                      cond do
                        remaining > 1 ->
-                         f.(f, List.update_at(params, index, fn {_k, v} -> {agent_id, remaining - 1} end))
+                         f.(f, List.update_at(params, index, fn {_k, _v} -> {agent_id, remaining - 1} end))
                        remaining == 1 ->
                          # first, send a target reached event
                          DirectDebug.info("about to send a target_reached event: #{run_id}/#{agent_id}")

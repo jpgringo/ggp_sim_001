@@ -6,9 +6,9 @@ defmodule GenePrototype0001.Sim.Scenario do
   require DirectDebug
 
   alias GenePrototype0001.Onta.Ontos
-  alias GenePrototype0001.Reports.ScenarioRunReportServer
+#  alias GenePrototype0001.Reports.ScenarioRunReportServer
   alias GenePrototype0001.Sim.ScenarioSupervisor
-  alias GenePrototype0001.Sim.SimController
+#  alias GenePrototype0001.Sim.SimController
 
   #============================================= API ============================================= #
 
@@ -44,6 +44,16 @@ defmodule GenePrototype0001.Sim.Scenario do
   end
 
   #======================================= IMPLEMENTATION ======================================== #
+
+  def child_spec({scenario_name, unique_id, agents}) do
+    %{
+      id: {:scenario, unique_id},
+      start: {__MODULE__, :start_link, [scenario_name, unique_id, agents]},
+      restart: :permanent,
+      shutdown: 300,
+      type: :worker
+    }
+  end
 
   def start_link(scenario_name, unique_id, agents) do
     Logger.debug("Scenario starting '#{scenario_name}/#{unique_id} with agents: #{inspect(agents)}")
@@ -108,18 +118,16 @@ defmodule GenePrototype0001.Sim.Scenario do
   @impl true
   def handle_cast({:close_ontos, agent_id}, state) do
     DirectDebug.info("#{state.name} will close Ontos #{inspect(agent_id)} (active onta: #{inspect(length(DynamicSupervisor.which_children(state.ontasup)))})")
-    {ontos_pid, ontos_final_state} = Ontos.close("#{state.id}_#{agent_id}")
+    ontos_final_state = Ontos.close("#{state.id}_#{agent_id}")
+    DirectDebug.warning("ONTOS_FINAL_STATE: #{inspect(ontos_final_state)}")
     DirectDebug.info("#{state.name} got final state for Ontos #{inspect(agent_id)}: #{inspect(ontos_final_state)}")
     closed_onta = [ontos_final_state | Map.get(state, :closed_onta, [])]
     DirectDebug.info("#{state.name} - closed_onta: #{inspect(closed_onta)}")
-    case DynamicSupervisor.terminate_child(state.ontasup, ontos_pid) do
-      :ok -> :ok
-      {:error, reason} ->
-        DirectDebug.error("#{state.name} could not terminate #{inspect(agent_id)}: #{inspect(reason)}")
-    end
 
     if length(DynamicSupervisor.which_children(state.ontasup)) == 0 do
       GenePrototype0001.Sim.SimController.on_scenario_complete(state.id)
+      else
+      DirectDebug.section("scenario #{inspect(state.name)} has #{length(DynamicSupervisor.which_children(state.ontasup))} children remaining")
     end
     {:noreply, Map.merge(state, %{closed_onta: closed_onta})}
   end
@@ -146,7 +154,7 @@ defmodule GenePrototype0001.Sim.Scenario do
   def terminate(reason, state) do
     DirectDebug.info("Terminating scenario #{state.name} with reason: #{inspect(reason)}. state: #{inspect(state)}", true)
     # Stop the OntaSupervisor; since we started it directly, we need to exit it explicitly
-    %{scenario_name: resource_id, id: run_id, agents: agents} = state
+    %{scenario_name: _resource_id, id: _run_id, agents: _agents} = state
 #    agent_summaries = Enum.map(agents, fn agent ->
 #      Map.merge(agent, %{"events" => %{"actuators" => Ontos.get_event_count("#{state.id}_#{agent["id"]}", :actuator)}})
 #    end)
@@ -164,8 +172,8 @@ defmodule GenePrototype0001.Sim.Scenario do
       opts = [scenario_id: unique_id, available_actuators: 1, numina: [GenePrototype0001.Numina.BasicMotionNumen]]
       spec = {GenePrototype0001.Onta.Ontos, {agent_id, opts}}
       case DynamicSupervisor.start_child(ontasup, spec) do
-        {:ok, pid} ->
-          DirectDebug.info("Scenario '#{unique_id}' - successfully started Ontos with PID #{inspect(pid)}", true)
+        {:ok, ontos_pid} ->
+          DirectDebug.info("Scenario '#{unique_id}' - successfully started Ontos with PID #{inspect(ontos_pid)}", true)
 
         {:error, {:already_started, pid}} ->
           DirectDebug.warning("Scenario '#{unique_id}' - ontos already started with PID #{inspect(pid)}", true)

@@ -27,12 +27,7 @@ defmodule GenePrototype0001.Sim.ScenarioSupervisor do
     DirectDebug.info("SIM SUPERVISOR: starting scenario '#{scenario_name}' with unique_id '#{unique_id}' and agents #{inspect(agents)}", true)
 
     # Create child spec with proper arguments
-    spec = %{
-      id: GenePrototype0001.Sim.Scenario,
-      start: {GenePrototype0001.Sim.Scenario, :start_link, [scenario_name, unique_id, agents]},
-      restart: :permanent,
-      shutdown: 300
-    }
+    spec = {GenePrototype0001.Sim.Scenario, {scenario_name, unique_id, agents}}
 
     case DynamicSupervisor.start_child(__MODULE__, spec) do
       {:ok, pid} ->

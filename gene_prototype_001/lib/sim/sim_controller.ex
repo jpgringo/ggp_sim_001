@@ -3,8 +3,10 @@ defmodule GenePrototype0001.Sim.SimController do
 
   use GenServer
   require Logger
+  require DirectDebug
 
   alias GenePrototype0001.Sim.UdpConnectionServer
+  alias GenePrototype0001.Sim.ScenarioSupervisor
   alias GenePrototype0001.Sim.Scenario
 
   @sim_controller_name :SimController
@@ -25,7 +27,9 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   def on_scenario_complete(scenario_id) do
-    GenServer.call(:complete_scenario, scenario_id)
+    DirectDebug.section("#{inspect(scenario_id)} - COMPLETE!!")
+    DirectDebug.warning("active scenarios: #{inspect ScenarioSupervisor.active_scenarios()}")
+    GenServer.call(@sim_controller_name, {:complete_scenario, scenario_id})
   end
 
   def stop_scenario(scenario_id) do
@@ -78,7 +82,7 @@ defmodule GenePrototype0001.Sim.SimController do
   end
 
   @impl true
-  def handle_call({:scenario_completed, scenario_id}, _from, state) do
+  def handle_call({:scenario_completed, _scenario_id}, _from, state) do
 #    UdpConnectionServer.send_stop_scenario(scenario_id)
     {:reply, :ok, state}
   end
@@ -98,6 +102,12 @@ defmodule GenePrototype0001.Sim.SimController do
     UdpConnectionServer.panic
     DirectDebug.info("#{state.name} - panic result: #{inspect(resp)}")
     {:reply, resp,%{state | scenario_in_progress: false}}
+  end
+
+  @impl true
+  def handle_call(:complete_scenario, _from, state) do
+    DirectDebug.error("#{state.name} -  COMPLETING SCENARIO")
+    {:reply, :ok ,%{state | scenario_in_progress: false}}
   end
 
   @impl true

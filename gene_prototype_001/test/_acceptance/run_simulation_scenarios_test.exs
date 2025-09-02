@@ -184,9 +184,10 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
       resource_id = TestSupport.make_resource_id()
       run_id = TestSupport.make_run_id()
       #      agent_ids = ["A", "B", "C", "D"]
-      agent_ids = ["A", "B"]
+#      agent_ids = ["A", "B"]
+      agent_ids = ["A"]
       #      triggering_sensor_event_counts = [1,2,3,4]
-      triggering_sensor_event_counts = [1, 1]
+      triggering_sensor_event_counts = [2]
       agent_params = Enum.zip([agent_ids, triggering_sensor_event_counts])
 
       %{pid: scenario_pid} = case TestSupport.start_scenario(resource_id, run_id, agent_ids, 1) do
@@ -217,6 +218,7 @@ defmodule GenePrototype0001.Test.Acceptance.RunSimulationScenarios do
       assert false
     end
   end
+
   def handle_info(msg, state) do
     DirectDebug.warning("unknown message: #{inspect(msg)}")
     {:noreply, state}

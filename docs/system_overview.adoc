@@ -3,11 +3,42 @@
 == Use cases
 
 === Managing Scenarios
-
 [plantuml, manage-scenario-diagram, svg]
 ----
 include::diagrams/use_cases/manage_scenarios.puml/[]
 ----
+
+==== Start Scenario
+
+===== Flow 1 (happy path)
+
+[cols="1a,1a,1a,3a"]
+|===
+|Preconditions
+
+  . No scenario is running
+
+|Actions
+
+  . user clicks "Start Scenario"
+  . UI sends `POST api/scenario` message to server
+
+|Postconditions
+
+  . scenario is running
+  . running scenario matches id and number of agents from payload
+
+| Tests
+
+  * /_acceptance/run_simulation_scenarios_test.exs::start/stop scenarios::start scenario
+|===
+
+Precondition: no scenario is running
+Action: user clicks Start Scenario / UI sends `POST api/scenario` message to server
+Expected:
+
+. scenario is running
+. running scenario matches id and number of agents from payload
 
 === Communicating with Sims
 

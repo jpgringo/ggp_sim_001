@@ -58,6 +58,16 @@ defmodule GenePrototype0001.Onta.Ontos do
 
   #======================================= IMPLEMENTATION ======================================== #
 
+  def child_spec({agent_id, opts}) do
+    %{
+      id: {:ontos, agent_id},                # 👈 no more :undefined in logs
+      start: {__MODULE__, :start_link, [{agent_id, opts}]},
+      restart: :transient,                   # see Section 2
+      shutdown: 10_000,
+      type: :worker
+    }
+  end
+
   # Client API
   def start_link({agent_id, opts}) do
     unique_id = "#{opts[:scenario_id]}_#{agent_id}"
@@ -144,7 +154,7 @@ defmodule GenePrototype0001.Onta.Ontos do
   @impl true
   def handle_call(:close, _from, state) do
     DirectDebug.section("Ontos '#{state.agent_id}' closing")
-    {:reply, {self(), Map.drop(state, [:numen_pids, :numen_supervisor, :sensor_table])}, state}
+    {:stop, {:shutdown, :completed}, Map.drop(state, [:numen_pids, :numen_supervisor, :sensor_table]), state}
   end
 
   @impl true
@@ -200,11 +210,11 @@ defmodule GenePrototype0001.Onta.Ontos do
     {:via, Registry, {GenePrototype0001.Onta.OntosRegistry, agent_id}}
   end
 
-  defp update_sensor_data(state, sensor_id, values) do
-    # Simply store the latest values for this sensor
-    :ets.insert(state.sensor_table, {sensor_id, values})
-    state
-  end
+#  defp update_sensor_data(state, sensor_id, values) do
+#    # Simply store the latest values for this sensor
+#    :ets.insert(state.sensor_table, {sensor_id, values})
+#    state
+#  end
 
   defp sensor_table_name(agent_id) do
     # Create a unique atom for this Ontos's sensor table
