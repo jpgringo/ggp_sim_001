@@ -1,0 +1,86 @@
+= Gene Sim - Dev Journal
+Firstname Lastname <author@asciidoctor.org>
+3.0, July 29, 2022: AsciiDoc article template
+:toc: preamble
+:toc-title: Contents
+:toclevels: 5
+:icons: font
+:url-quickref: https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference/
+
+Having learned my lesson in trying to build a complex event-driven system from scratch and _ad hoc_, I'm going to try to rebuild based on those exact learning by working more slowly, design-first (or at worst keeping pace with the resolution of technical challenges when that approach is absolutely necessary), and keeping a running narrative flow of documentation rather than trying to be explicitly formal about it.
+
+To that end, I'll be rebuilding the app ‘from the inside out’, borrowing code liberally from the first attempt, updating and modifying it as necessary, and building both this documentation and the relevant tests as I go, to ensure that there is clarity of intention, structure, and function at all times.
+
+
+== 2025–09–02 — The Basics
+
+=== The structure
+These are the basic top-level components of the system:
+
+[plantuml, top-level-component-diagram, svg]
+----
+include::diagrams/component/top-level_components.puml/[]
+----
+
+Both the `Sim` and the `UI` are initialy just being reused from the first prototype of this system.
+
+The `Sim` is currently built in Godot. It will be a little bit important as we go along to understand how the `Maze` and `Players` interact with each other and `Global`, but I'm going to leave that for now, since the whole point of this system is to be able to genetically program simulation environments in a highly agnostic way.
+
+The `UI` is a Vue.js application enabling a human-friendly, somewhat visual interface for both control and instrumentation of the system, via the `Server` 's HTTP connections (both async and WebSocket.)
+
+=== The workflow
+
+This is basically what happens in the system (ignoring alternate flows, exceptions, etc.) for the time being:
+
+[plantuml, basic-workflow-diagram, svg]
+----
+include::diagrams/activity/workflow_overview.puml[]
+----
+
+* In the UI, the user chooses from the available scenarios, the number of agents, etc., and initiates the simulation session
+* The server sets up the required processes to session the scenario, and then asks the simulation environment to start the session
+* During the session, the sim sends a more or less continuous stream of sensor data back to the server; the server processes this data, and in return sends back actuator data, where warranted
+* For user-friendliness, the server sends instrumentation data back to the UI regularly throughout the session, so that the UI can keep the user informed as to the progress of the simulation session
+* When all 'agents' in the simulator have reached a terminal state (success, 'death', or whatever), the server aggregates the stats from the session, saves them, and sends them back to the UI for display
+
+All of this of course ignores the heuristic nature of the system (which is its whole purpose) but does get the fundamental communication and control flow out of the way.
+
+=== The initial tests
+
+==== Control API
+
+*Test file:* `_integration/servers_test.exs`
+*Test block:* HTTP control API
+
+* Is the API available?
+** *intent:* Can we connect to it without an error?
+** *test:* Control API is available
+
+* Is the server available?
+** *intent:* Will we be able to communicate with the gene server itself?
+** *test:* Does the control API status indicate that the gene server is available
+** *note:* this will currently always report true, since the API and the server are part of the same process tree
+
+* Is the simulation environment available?
+** *intent:* Will we (i.e., the server) be able to communicate with the simulation environment?
+** *test:* Does the control API status indicate that the simulation environment is available
+** *note:* during testing, the simulation environment will be represented by the `testing_simulator`
+
+== 2025-09-03 — Continuing the Basics
+
+Yesterday, I got stuck on trying to establish that the simulation environment was available. This isn't a flaw in either the logic or the test, but rather the Testing Simulator (`test/support/testing_simulator.ex`) itself. Before proceeding / being able to proceed with a simulation session, a simulator (test or otherwise) needs to signal to the SimController that it's ready, and it does so by sending a JsonRPC signal (`method: "sim_ready"`) via UDP. That's fixed now, and the failing test ("Is the simulation environment available?") is passing. Time to commit.
+
+=== Next: Un/successfully start and stop simulation runs
+
+Now that we've established the basic communication, and that we can validate that components are running, it's time to see if we can successfully start a simulation session, and also stop a session.
+It makes a lot of sense to test this from the PoV of the UI (so that when we wire that in, we can validate that the server and the HTTP API are already working) so because of that end-to-end quality and the assumed presence of a user, we'll make this an _acceptance test_.
+
+The new pre-/postconditions we'll need to test will be:
+
+. in the absence of a currently running scenario  (we can only run one at a time right now, remember) , and with both the server and the sim environment running, can we successfuly start a session?
+. if the server is not running (again, not currently possible if we're communicating with _anything_), the sim environment is not available, or a scenario is already in session, do we get a failure and a meaningful error message?
+. once a session is running, can we validate that it correctly represents the scenario we requested?
+. once a scenario session is running, can we successfully stop it? (without crashing or other errors)
+
+==== First test: can we start a scenario (happy path?)
+

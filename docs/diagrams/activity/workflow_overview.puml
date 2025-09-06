@@ -1,0 +1,32 @@
+@startuml
+'https://plantuml.com/activity-diagram-beta
+
+|UI|
+start
+:choose options;
+:start run;
+|Server|
+:set up scenario run;
+:notify sim environment;
+|Sim Environment|
+:start simulation;
+
+repeat
+    :send sensor data;
+    |Server|
+    :send actuator data;
+    :send instrumentation data;
+    |UI|
+    :display status;
+    |Sim Environment|
+repeat while (1+ agents not at target)
+
+|Server|
+:compile & save run stats;
+
+|UI|
+:display final run stats;
+
+stop
+
+@enduml
