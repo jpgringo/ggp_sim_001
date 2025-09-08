@@ -18,6 +18,10 @@ defmodule GeneticsEngine.Test.TestSupport do
     Nanoid.generate(8, @alphabet)
   end
 
+  def make_agent_id() do
+    Nanoid.generate(7, @alphabet)
+  end
+
   def create_and_validate_scenario(scenario_resource_id \\nil, run_id \\nil, port \\ 7400) do
     scenario_resource_id = case scenario_resource_id do
       nil -> Nanoid.generate(8, ~c"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")

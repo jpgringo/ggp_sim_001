@@ -8,6 +8,10 @@ defmodule GeneticsEngine.Test.TestingSimulator do
 
   #============================================= API ============================================= #
 
+  def announce do
+    DirectDebug.info("announcing test simulator")
+  end
+
   def initiate_scenario_run(opts) do
     GenServer.call(@testing_simulator_name, {:initiate_scenario_run, opts})
   end

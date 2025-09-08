@@ -148,6 +148,26 @@ defmodule GeneticsEngine.Test.Acceptance.RunSimulationScenarios do
       assert Process.alive?(scenario_pid), "scenario process should be alive"
     end
 
+    test "explicitly stop scenario" do
+      DirectDebug.section("starting 'explicitly stop scenario'...")
+
+      :pg.join(:scenario_events, self())
+
+      resource_id = TestSupport.make_resource_id()
+      run_id = TestSupport.make_run_id()
+      agent_id = TestSupport.make_agent_id()
+
+      %{pid: scenario_pid} = case TestSupport.start_scenario(resource_id, run_id, [agent_id], 1) do
+        :error -> nil
+        s -> s
+      end
+
+      assert Process.alive?(scenario_pid), "scenario process should be alive"
+
+      # there should be one agent, with the correct id
+
+    end
+
     test "destroy scenario when sim quits" do
       DirectDebug.section("starting 'destroy scenario when sim quits'...")
 

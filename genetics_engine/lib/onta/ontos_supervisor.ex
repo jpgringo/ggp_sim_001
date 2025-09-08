@@ -3,7 +3,7 @@ defmodule GeneticsEngine.Onta.OntosSupervisor do
   require Logger
 
   def start_link(init_args) do
-    :logger.info("Starting Ontos supervisor... init_args: #{inspect(init_args)}")
+    DirectDebug.section("Starting Ontos supervisor... init_args: #{inspect(init_args)}")
     # TODO: this 'dance' around registry names is only necessary until the direct creation of
     #       Onta (i.e., not via Scenarios) is eliminated
     name = case init_args do
@@ -20,7 +20,9 @@ defmodule GeneticsEngine.Onta.OntosSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
+  @doc deprecated: "Part of the old lifecycle; Onta are now started by each Scenario's individual OntosSupervisor and `start_child`"
   def start_ontos(agent_id, params \\ %{}) do
+    DirectDebug.section("start_ontos. agent_id=#{agent_id}, params: #{inspect(params)}")
     available_actuators = Map.get(params, "actuators", 0)
     numina = Map.get(params, "numina", [GeneticsEngine.Numina.BasicMotionNumen])
     Logger.debug("STARTING ONTOS #{agent_id}. params: #{inspect(params)}")

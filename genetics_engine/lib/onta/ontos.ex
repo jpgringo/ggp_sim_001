@@ -15,6 +15,10 @@ defmodule GeneticsEngine.Onta.Ontos do
     GenServer.call(via_tuple(agent_id), :get_state)
   end
 
+  def get_agent_id(ontos_pid) when is_pid(ontos_pid) do
+
+  end
+
   def get_event_count(agent_id, event_type) do
     state = GenServer.call(via_tuple(agent_id), :get_state)
     case event_type do
@@ -70,6 +74,7 @@ defmodule GeneticsEngine.Onta.Ontos do
 
   # Client API
   def start_link({agent_id, opts}) do
+    Process.flag(:trap_exit, true) # ESSENTIAL to ensure terminate/2 runs
     unique_id = "#{opts[:scenario_id]}_#{agent_id}"
 #    name = via_tuple(agent_id)
     name = via_tuple(unique_id)
@@ -205,7 +210,12 @@ defmodule GeneticsEngine.Onta.Ontos do
     {:noreply, %{state | actuators_issued: state.actuators_issued + new_actuator_sends}}
   end
 
-  # Helper functions
+  @impl true
+  def terminate(reason, state) do
+    DirectDebug.info("Terminating ontos #{state.agent_id} with reason: #{inspect(reason)}. state: #{inspect(state)}", true)
+  end
+
+    # Helper functions
   defp via_tuple(agent_id) do
     {:via, Registry, {GeneticsEngine.Onta.OntosRegistry, agent_id}}
   end
