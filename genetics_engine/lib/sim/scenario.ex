@@ -27,6 +27,7 @@ defmodule GeneticsEngine.Sim.Scenario do
   end
 
   def on_agent_reached_target(scenario_id, agent_id) do
+    DirectDebug.warning("on_agent_reached_target!! scenario_id=#{scenario_id}, agent_id=#{agent_id}")
     case Registry.lookup(GeneticsEngine.Sim.ScenarioRegistry, scenario_id) do
       [{scenario_pid, _}] ->
         GenServer.cast(scenario_pid, {:close_ontos, agent_id})

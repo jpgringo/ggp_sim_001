@@ -70,7 +70,31 @@ defmodule GeneticsEngine.Test.Acceptance.SimulationRuns do
         assert !Process.alive?(o_pid), "onta process should no longer be alive"
       end)
     end
-
-
   end
-end
+
+  describe "signalling" do
+    @tag :signalling
+    test "Ontos signals parent scenario on reaching target" do
+      DirectDebug.section("Ontos signals parent scenario on reaching target'...")
+
+      :pg.join(:scenario_events, self())
+
+      resource_id = TestSupport.make_resource_id()
+      run_id = TestSupport.make_run_id()
+      agent_ids = [TestSupport.make_agent_id(), TestSupport.make_agent_id()]
+
+      DirectDebug.info("agent_ids: #{inspect(agent_ids)}")
+
+      %{pid: scenario_pid} = case TestSupport.start_scenario(resource_id, run_id, agent_ids, 1) do
+        :error -> nil
+        s -> s
+      end
+
+      assert Process.alive?(scenario_pid), "scenario process should be alive"
+      {:ok, [first_ontos_pid | _ ]} = Scenario.get_onta(scenario_pid)
+      Ontos.test_event(first_ontos_pid, :target_reached, [])
+
+      end
+
+    end
+  end

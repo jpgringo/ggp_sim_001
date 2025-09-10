@@ -6,7 +6,7 @@ config :genetics_engine,
   send_ip: "127.0.0.1",
   receive_port: 7400,
   send_port: 7401,
-  direct_log_level: :info
+  direct_log_level: :all
 
 config :logger,
   level: :warning,

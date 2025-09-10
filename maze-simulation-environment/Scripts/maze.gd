@@ -276,7 +276,7 @@ func clear_scenario(remove_perimeter = false):
 
 func _on_body_entered(body):
 	body.queue_free()
-	Global.transmit("reached_target", {"agent": body.get_instance_id()})
+	Global.transmit("reached_target", {"run": current_scenario_id, "agent": body.get_instance_id()})
 
 func _handle_event(event):
 	event_queue.push_back(event)

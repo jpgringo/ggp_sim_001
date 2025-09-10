@@ -57,7 +57,10 @@ defmodule GeneticsEngine.Onta.Ontos do
       [] ->
         DirectDebug.warning("Could NOT find agent #{agent_id}")
     end
+  end
 
+  def test_event(ontos_pid, event_name, params) do
+    GenServer.call(ontos_pid, {event_name, params})
   end
 
   #======================================= IMPLEMENTATION ======================================== #
@@ -110,6 +113,7 @@ defmodule GeneticsEngine.Onta.Ontos do
       agent_id: unique_id,
       raw_id: agent_id,
       available_actuators: available_actuators,
+      sensor_data_received: 0,
       actuators_issued: 0,
       numen_supervisor: numen_sup,
       numen_pids: numen_pids,
@@ -190,7 +194,7 @@ defmodule GeneticsEngine.Onta.Ontos do
 
     process_incoming_sensor_set(preprocessed_input, state)
 
-    {:noreply, state}
+    {:noreply, %{state | sensor_data_received: state.sensor_data_received + length(sensor_data_list)}}
   end
 
   @impl true

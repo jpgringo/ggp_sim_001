@@ -172,9 +172,9 @@ defmodule GeneticsEngine.Sim.UdpConnectionServer do
     {:noreply, state}
   end
 
-  defp handle_rpc_call("reached_target", %{"scenario" => scenario_id, "agent" => agent_id}, state) do
-    DirectDebug.info("SimUdpConnector - handling 'reached_target' method. scenario=#{scenario_id}; agent=#{agent_id}")
-    Scenario.on_agent_reached_target(scenario_id, agent_id)
+  defp handle_rpc_call("reached_target", %{"run" => simulation_run_id, "agent" => agent_id}, state) do
+    DirectDebug.info("SimUdpConnector - handling 'reached_target' method. scenario=#{simulation_run_id}; agent=#{agent_id}")
+    Scenario.on_agent_reached_target(simulation_run_id, agent_id)
     {:noreply, state}
   end
 
