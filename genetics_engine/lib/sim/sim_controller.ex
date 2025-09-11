@@ -10,7 +10,8 @@ defmodule GeneticsEngine.Sim.SimController do
   alias GeneticsEngine.Sim.Scenario
 
   @sim_controller_name :SimController
-  @sim_ping_interval 2500
+
+  @sim_ping_interval Application.compile_env(:genetics_engine, :sim_ping_interval, 2500)
 
   #============================================= API ============================================= #
 
@@ -56,7 +57,7 @@ defmodule GeneticsEngine.Sim.SimController do
   def init([name: name]) do
     Logger.info("starting sim controller...")
     :pg.join(:sim_events, self())
-    Process.send_after(self(), :ping_sim, @sim_ping_interval)
+    Process.send_after(self(), :ping_sim, 50)
     {:ok, %{
       name: name,
       simulator_running: false,
