@@ -16,6 +16,10 @@ defmodule GeneticsEngine.Sim.UdpConnectionServer do
     GenServer.call(@sim_connector_name, :sim_ready)
   end
 
+  def ping_sim do
+    GenServer.cast(@sim_connector_name, :ping_sim)
+  end
+
   def send_actuator_data(agent_id, actuator_data) do
     GenServer.call(@sim_connector_name, {:send_actuator_data,
       agent_id,
@@ -85,6 +89,18 @@ defmodule GeneticsEngine.Sim.UdpConnectionServer do
   end
 
   @impl true
+  def handle_cast(:ping_sim, state = %{socket: socket, send_ip: send_ip, send_port: send_port}) do
+    DirectDebug.info("UdpConnectionServer will ping sim...")
+    notification = Jason.encode!(%{
+      "jsonrpc" => "2.0",
+      "method" => "sim_ping",
+      "params" => nil
+    })
+    :gen_udp.send(socket, to_charlist(send_ip), send_port, notification)
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_call(:sim_ready, _from, state) do
     {:reply, state.sim_ready, state}
   end
@@ -128,6 +144,18 @@ defmodule GeneticsEngine.Sim.UdpConnectionServer do
     Logger.info("#{state.name} - Sim ready!!: #{inspect(params)}")
     SimController.handle_sim_started(params)
 #    SimulationSocket.broadcast_start(params)
+    {:noreply, %{state | sim_ready: true}}
+  end
+
+  defp handle_rpc_call("sim_pong", params, state) do
+    Logger.info("#{state.name} - Sim ready!!: #{inspect(params)}")
+    SimController.handle_sim_started(params)
+    case Process.whereis(:pg) do
+      nil -> DirectDebug.error(":pg is not running")
+      _ ->
+        Enum.each(:pg.get_members(:sim_events), & send(&1, {:sim_events, :pong, params}))
+        :ok
+    end
     {:noreply, %{state | sim_ready: true}}
   end
 

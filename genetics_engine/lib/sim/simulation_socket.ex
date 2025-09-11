@@ -60,7 +60,7 @@ defmodule GeneticsEngine.SimulationSocket do
 
   @impl WebSock
   def handle_info(info, state) do
-    DirectDebug.error("SimulationSocket received unknown message: #{inspect(info)}")
+    DirectDebug.warning("SimulationSocket received unknown message: #{inspect(info)}")
     {:ok, state}
   end
 

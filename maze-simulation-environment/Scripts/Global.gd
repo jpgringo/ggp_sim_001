@@ -112,6 +112,10 @@ func _handle_json_rpc(msg: Dictionary, _ip: String, _port: int) -> void:
 		call_deferred("_start_scenario_main_thread", turtle_scene, scenario, unique_id, player_count)
 	else: if method == "stop_scenario" || method == "panic":
 		call_deferred("_stop_scenario_main_thread")
+	else: if method == "sim_ping":
+		transmit("sim_pong", {"scenarios": get_maps_list()})
+	else:
+		print("Unknown method: %s" % method)
 
 func transmit(method: String, data: Variant):
 	var msg = json_rpc.make_notification(method, data)

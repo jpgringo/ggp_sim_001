@@ -10,6 +10,7 @@ defmodule GeneticsEngine.Sim.SimController do
   alias GeneticsEngine.Sim.Scenario
 
   @sim_controller_name :SimController
+  @sim_ping_interval 2500
 
   #============================================= API ============================================= #
 
@@ -54,8 +55,18 @@ defmodule GeneticsEngine.Sim.SimController do
   @impl true
   def init([name: name]) do
     Logger.info("starting sim controller...")
-    {:ok, %{name: name, simulator_running: false, scenarios: [], scenario_in_progress: false}}
+    :pg.join(:sim_events, self())
+    Process.send_after(self(), :ping_sim, @sim_ping_interval)
+    {:ok, %{
+      name: name,
+      simulator_running: false,
+      scenarios: [],
+      scenario_in_progress: false,
+      # Set initial value to Unix epoch (1970-01-01) so that current time will always be greater than this on first comparison
+      last_sim_event_time: DateTime.from_unix!(0)
+    }}
   end
+
 
   @impl true
   def handle_call(:current_sim_state, _from, state) do
@@ -132,4 +143,29 @@ defmodule GeneticsEngine.Sim.SimController do
     :logger.warning("#{state.name} - unknown cast #{inspect(msg)}")
     {:noreply, state}
   end
+
+  @impl true
+  def handle_info({:sim_events, event, _payload}, state) do
+    # Update last event time to track when we last heard from the simulator
+    {:noreply, %{state | last_sim_event_time: DateTime.utc_now()}}
+  end
+
+  @impl true
+  def handle_info(:ping_sim, state) do
+    # Only ping if we haven't heard from the simulator in @sim_ping_interval milliseconds
+    current_time = DateTime.utc_now()
+    time_diff_ms = DateTime.diff(current_time, state.last_sim_event_time, :millisecond)
+
+    if time_diff_ms >= @sim_ping_interval do
+      UdpConnectionServer.ping_sim()
+    end
+
+    # schedule the next ping!
+    Process.send_after(self(), :ping_sim, @sim_ping_interval)
+    {:noreply, state}
+  end
+
+  #=========================================== INTERNAL ========================================== #
+
+
 end
