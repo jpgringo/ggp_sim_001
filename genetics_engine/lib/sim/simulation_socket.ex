@@ -14,7 +14,7 @@ defmodule GeneticsEngine.SimulationSocket do
 
   def broadcast_start(params) do
     # Logger.debug("BROADCASTING START!!")
-    DirectDebug.info("BROADCASTING START!!")
+    DirectDebug.info("BROADCASTING START!! #{inspect(params)}")
     Registry.dispatch(SimulationSocketRegistry, "simulation", fn entries ->
       message = Jason.encode!(%{type: "start", data: params})
       for {pid, _} <- entries do
@@ -37,6 +37,7 @@ defmodule GeneticsEngine.SimulationSocket do
   def init(_args) do
     Logger.info("WebSocket connection established")
     {:ok, _} = Registry.register(SimulationSocketRegistry, "simulation", {})
+    :pg.join(:scenario_events, self())
     {:ok, %{}}
   end
 
@@ -51,7 +52,15 @@ defmodule GeneticsEngine.SimulationSocket do
   end
 
   @impl WebSock
-  def handle_info(_info, state) do
+  def handle_info({:simulation_run_started, data}, state) do
+    DirectDebug.error("SimulationSocket received simulation_run_started: #{inspect(data)}")
+    broadcast_start(data)
+    {:ok, state}
+  end
+
+  @impl WebSock
+  def handle_info(info, state) do
+    DirectDebug.error("SimulationSocket received unknown message: #{inspect(info)}")
     {:ok, state}
   end
 
@@ -60,4 +69,5 @@ defmodule GeneticsEngine.SimulationSocket do
     Logger.info("WebSocket connection closed")
     :ok
   end
+
 end

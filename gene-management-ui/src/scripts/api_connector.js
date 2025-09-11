@@ -21,7 +21,7 @@ export default {
         ws.onmessage = (event) => {
           const message = JSON.parse(event.data);
           if (message.type === 'batch') {
-            console.log('Received batch:', message.data);
+            // console.log('Received batch:', message.data);
           }
           messageHandlers && messageHandlers.forEach(handler => handler(message));
         };

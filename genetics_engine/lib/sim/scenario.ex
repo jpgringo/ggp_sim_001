@@ -66,13 +66,18 @@ defmodule GeneticsEngine.Sim.Scenario do
   @impl true
   def init(opts) do
     Process.flag(:trap_exit, true) # ESSENTIAL to ensure terminate/2 runs
-    DirectDebug.info("Initializing scenario: #{opts.name}") # bold, underline, yellow
+    DirectDebug.info("Initializing scenario: #{opts.name}; pg: #{inspect(Process.whereis(:pg))}") # bold, underline, yellow
 
     # NOW start OntaSupervisor
     case GeneticsEngine.Onta.OntosSupervisor.start_link([name: "#{opts.name}_ontasup"]) do
       {:ok, ontasup_pid} ->
         init_onta(opts.id, ontasup_pid, opts.agents)
         state = Map.put(opts, :ontasup, ontasup_pid)
+        if Process.whereis(:pg) != nil do
+          DirectDebug.warning("Sending to :scenario_events process group…")
+          Enum.each(:pg.get_members(:scenario_events), & send(&1, {:simulation_run_started, Map.delete(state, :ontasup)}))
+        end
+
         {:ok, state}
 
       {:error, reason} ->

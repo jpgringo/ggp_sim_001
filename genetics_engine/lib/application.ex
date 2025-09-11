@@ -4,6 +4,9 @@ defmodule GeneticsEngine.Application do
   @impl true
   def start(_type, _args) do
     DirectDebug.info("starting application...")
+    if Mix.env != :test do
+      :pg.start_link()
+    end
     children = [
       # Registry for Scenario instances
       {Registry, keys: :unique, name: GeneticsEngine.Sim.ScenarioRegistry},

@@ -127,7 +127,7 @@ defmodule GeneticsEngine.Sim.UdpConnectionServer do
   defp handle_rpc_call("sim_ready", params, state) do
     Logger.info("#{state.name} - Sim ready!!: #{inspect(params)}")
     SimController.handle_sim_started(params)
-    SimulationSocket.broadcast_start(params)
+#    SimulationSocket.broadcast_start(params)
     {:noreply, %{state | sim_ready: true}}
   end
 

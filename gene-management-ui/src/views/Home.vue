@@ -26,9 +26,9 @@ const handleStartScenario = async (opts) => {
   console.log(`Home.handleScenarioStart - scenarioId='${scenarioId}'; opts:`, opts);
   opts.unique_id = scenarioId;
   let result = await api_connector.startScenario(opts, [onSimMessage]);
-  if(result?.ok) {
-    simStore.scenarioStarted(opts.scenario, opts.unique_id);
-  }
+  // if(result?.ok) {
+  //   simStore.scenarioStarted(opts.scenario, opts.unique_id);
+  // }
   console.log(`Home.handleSimStart - result:`, result);
 };
 
@@ -53,8 +53,12 @@ const handlePanic = async () => {
 const onSimMessage = (msg) => {
   console.log(`Home got sim message:`, msg);
   switch(msg?.type) {
+    case "start":
+      simStore.scenarioStarted(msg.data)
+      break;
     case "stop":
       simStore.scenarioStopped(msg);
+      break;
   }
 }
 
