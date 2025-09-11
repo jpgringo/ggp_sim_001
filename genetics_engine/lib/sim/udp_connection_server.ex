@@ -223,7 +223,7 @@ defmodule GeneticsEngine.Sim.UdpConnectionServer do
     DirectDebug.extra("#{state.name} - handling batch: #{inspect(batch)}")
 
     # Forward batch to WebSocket clients
-    SimulationSocket.broadcast_batch(batch)
+#    SimulationSocket.broadcast_batch(batch)
 
     group_by_scenario(batch["sensor_data"])
     |> Enum.each(fn scenario ->

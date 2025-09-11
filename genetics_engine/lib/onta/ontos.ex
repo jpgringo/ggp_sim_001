@@ -111,6 +111,7 @@ defmodule GeneticsEngine.Onta.Ontos do
 
     {:ok, %{
       agent_id: unique_id,
+      run_id: opts[:scenario_id],
       raw_id: agent_id,
       available_actuators: available_actuators,
       sensor_data_received: 0,
@@ -211,7 +212,14 @@ defmodule GeneticsEngine.Onta.Ontos do
           acc
       end
     end)
-    {:noreply, %{state | actuators_issued: state.actuators_issued + new_actuator_sends}}
+    total_actuators_issued = state.actuators_issued + new_actuator_sends
+    new_state = %{state | actuators_issued: total_actuators_issued}
+    if Process.whereis(:pg) != nil do
+      DirectDebug.warning("Sending to :scenario_events process group…")
+      Enum.each(:pg.get_members(:ontos_events), & send(&1, {:ontos_events, :actuator_sent, Map.drop(new_state, [:numen_supervisor, :numen_pids])}))
+    end
+
+    {:noreply, new_state}
   end
 
   @impl true

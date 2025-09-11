@@ -38,6 +38,7 @@ defmodule GeneticsEngine.SimulationSocket do
     Logger.info("WebSocket connection established")
     {:ok, _} = Registry.register(SimulationSocketRegistry, "simulation", {})
     :pg.join(:scenario_events, self())
+    :pg.join(:ontos_events, self())
     {:ok, %{}}
   end
 
@@ -48,6 +49,13 @@ defmodule GeneticsEngine.SimulationSocket do
 
   @impl WebSock
   def handle_info({:send_message, message}, state) do
+    {:push, {:text, message}, state}
+  end
+
+  @impl WebSock
+  def handle_info({:ontos_events, :actuator_sent, data}, state) do
+    DirectDebug.warning("handling :ontos_event `:actuator_sent`. data: #{inspect(data)}")
+    message = Jason.encode!(%{type: "actuator_sent", data: data})
     {:push, {:text, message}, state}
   end
 
@@ -69,5 +77,6 @@ defmodule GeneticsEngine.SimulationSocket do
     Logger.info("WebSocket connection closed")
     :ok
   end
+
 
 end
