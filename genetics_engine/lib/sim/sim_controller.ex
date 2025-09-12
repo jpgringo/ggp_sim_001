@@ -117,8 +117,9 @@ defmodule GeneticsEngine.Sim.SimController do
   end
 
   @impl true
-  def handle_call(:complete_scenario, _from, state) do
-    DirectDebug.error("#{state.name} -  COMPLETING SCENARIO")
+  def handle_call({:complete_scenario, run_id}, _from, state) do
+    DirectDebug.error("#{state.name} -  COMPLETING SCENARIO '#{inspect(run_id)}'")
+    UdpConnectionServer.send_stop_scenario(run_id)
     {:reply, :ok ,%{state | scenario_in_progress: false}}
   end
 
