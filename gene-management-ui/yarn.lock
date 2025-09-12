@@ -736,6 +736,11 @@ pinia@^3.0.2:
   dependencies:
     "@vue/devtools-api" "^7.7.2"
 
+plotly.js-dist-min@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/plotly.js-dist-min/-/plotly.js-dist-min-3.1.0.tgz#22318db3ed1608e4d6e7af5f8a925993d871c502"
+  integrity sha512-aihvA/+SnwEQxSufaPn8AWDUzdHFAbsCk2+w/IJResDafK3E2tvCvzW+ZV6JlMciJc7hQ3kCILS5Ao22OZ6kWA==
+
 postcss@^8.4.48, postcss@^8.5.3:
   version "8.5.3"
   resolved "https://registry.yarnpkg.com/postcss/-/postcss-8.5.3.tgz#1463b6f1c7fb16fe258736cba29a2de35237eafb"
