@@ -5,7 +5,11 @@ import Plotly from 'plotly.js-dist-min'
 export default defineComponent({
   name: 'SimRealTimeInstrumentation',
   data() {
+    const maxPoints = 50
     return {
+      animationFrame: null,
+      resizeObserver: null,
+      lastUpdate: 0,
       timer: null,
       traces: [
         { name: 'Agent 1', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#FF1919', width: 2 } },
@@ -32,21 +36,41 @@ export default defineComponent({
   mounted() {
     const now = Date.now()
     
-    // Initialize traces with 50 points
+    // Pre-allocate arrays for better performance
+    const maxPoints = 50
     this.traces.forEach(trace => {
-      trace.x = Array.from({ length: 50 }, (_, i) => now - (50 - i) * 100)
-      trace.y = Array.from({ length: 50 }, () => Math.floor(Math.random() * 25))
+      trace.x = new Array(maxPoints).fill(0)
+      trace.y = new Array(maxPoints).fill(0)
+      for (let i = 0; i < maxPoints; i++) {
+        trace.x[i] = now - (maxPoints - i) * 100
+        trace.y[i] = Math.floor(Math.random() * 25)
+      }
     })
 
     // Create plot
     Plotly.newPlot(this.$refs.chart, this.traces, this.layout, {
       displayModeBar: false,
-      responsive: true
+      responsive: true,
+      transition: {
+        duration: 0,
+        easing: 'cubic-in-out'
+      }
     })
 
-    // Update function
+    // Handle resize
+    this.resizeObserver = new ResizeObserver(() => {
+      Plotly.Plots.resize(this.$refs.chart)
+    })
+    this.resizeObserver.observe(this.$refs.chart)
+
+    // Update function using requestAnimationFrame
     const update = () => {
       const now = Date.now()
+      const elapsed = now - this.lastUpdate
+
+      // Limit updates to ~10 FPS for performance
+      if (elapsed > 100) {
+        this.lastUpdate = now
       
       // Update all traces in a single call
       const updates = {
@@ -55,9 +79,9 @@ export default defineComponent({
       }
 
       this.traces.forEach(trace => {
-        // Remove old points and add new one
-        trace.x = trace.x.filter(x => x > now - 5000)
-        trace.y = trace.y.slice(-trace.x.length)
+        // Use circular buffer approach
+        trace.x.shift()
+        trace.y.shift()
         trace.x.push(now)
         trace.y.push(Math.floor(Math.random() * 25))
 
@@ -65,22 +89,29 @@ export default defineComponent({
         updates.y.push([...trace.y])
       })
 
-      // Update plot with all traces at once
-      Plotly.update(
-        this.$refs.chart,
-        updates,
-        { 'xaxis.range': [now - 5000, now] }
-      )
+        // Update plot with all traces at once
+        Plotly.update(
+          this.$refs.chart,
+          updates,
+          { 'xaxis.range': [now - 5000, now] }
+        )
+      }
+
+      // Schedule next update
+      this.animationFrame = requestAnimationFrame(update)
     }
 
     // Start updates
     update()
-    this.timer = setInterval(update, 100)
   },
 
   beforeUnmount() {
-    if (this.timer) clearInterval(this.timer)
-    if (this.$refs.chart) Plotly.purge(this.$refs.chart)
+    if (this.animationFrame) cancelAnimationFrame(this.animationFrame)
+    if (this.$refs.chart) {
+      this.resizeObserver.unobserve(this.$refs.chart)
+      this.resizeObserver.disconnect()
+      Plotly.purge(this.$refs.chart)
+    }
   }
 })
 </script>
