@@ -1,110 +1,219 @@
-<script>
-import { defineComponent } from 'vue'
+<script setup>
+import { ref, onMounted, onBeforeUnmount, watchEffect, computed } from 'vue'
 import Plotly from 'plotly.js-dist-min'
 
-export default defineComponent({
-  name: 'SimRealTimeInstrumentation',
-  data() {
-    return {
-      animationFrame: null,
-      resizeObserver: null,
-      lastUpdate: 0,
-      timer: null,
-      layout: {
-        xaxis: {
-          range: [0, 2500],
-          title: 'Time (ms)'
-        },
-        yaxis: {
-          range: [0, 25],
-          title: 'Event Count'
-        },
-        height: 400,
-        margin: { t: 20, l: 60, r: 40, b: 40 },
-        showlegend: true
-      }
-    }
-  },
-  props: {
-    xAxisStep: {
-      type: Number,
-      default: 50
-    },
-    yAxisStep: {
-      type: Number,
-      default: 10
-    },
-    agentTraces: {
-      type: Array,
-      required: true,
-      default: () => ([
-      { name: 'Agent 1', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#FF1919', width: 2 } },
-      { name: 'Agent 2', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#19FF19', width: 2 } },
-      { name: 'Agent 3', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#1919FF', width: 2 } },
-      { name: 'Agent 4', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#FFB619', width: 2 } }
-    ])},
+const props = defineProps({
+  xAxisStep: { type: Number, default: 50 },
+  yAxisStep: { type: Number, default: 10 },
+  agentData: { type: Object, required: true },
+})
 
-  },
-  mounted() {
-    // Create plot
-    Plotly.newPlot(this.$refs.chart, this.agentTraces, this.layout, {
-      displayModeBar: false,
-      responsive: true,
-      transition: {
-        duration: 0,
-        easing: 'cubic-in-out'
-      }
-    })
+const chart = ref(null)
+const resizeObserver = ref(null)
 
-    // Handle resize
-    this.resizeObserver = new ResizeObserver(() => {
-      Plotly.Plots.resize(this.$refs.chart)
-    })
-    this.resizeObserver.observe(this.$refs.chart)
+// Maps agentId -> trace index, and agentId -> last processed length
+const traceIndexById = ref(new Map())
+const lastLenById = ref(new Map())
 
-    // Update function using requestAnimationFrame
-    const update = () => {
-      const maxX = Math.ceil(this.agentTraces.reduce((acc, series) => {
-        console.log(`series:`, series);
-        const lastX = series.x.length > 0 ? series.x[series.x.length - 1] : 0
-        acc = Math.max(acc, lastX)
-        return acc
-      }, 0) / this.xAxisStep) * this.xAxisStep
+const agents = computed(() => props.agentData?.agents ?? [])
+const dataVersion = computed(() => props.agentData?.version ?? 0)
 
-      let yValues = this.agentTraces.flatMap(trace => trace.y);
-      console.log(`yValues:`, yValues);
-      const maxY = Math.ceil(Math.max(...yValues)/this.yAxisStep) * this.yAxisStep
+const palette = ['#FF1919', '#19FF19', '#1919FF', '#FFB619', '#9B59B6', '#1ABC9C', '#F39C12', '#2ECC71']
+const colorForIndex = (i) => palette[i % palette.length]
 
-      console.log(`maxX=${maxX}`);
-      console.log(`maxY=${maxY}`);
+function buildTracesFromAgents(currAgents) {
+  return currAgents.map((d, i) => ({
+    uid: d.id ?? `trace-${i}`,
+    name: d.id ?? `Trace ${i + 1}`,
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: colorForIndex(i), width: 2 },
+    x: [...(d.x ?? [])],
+    y: [...(d.y ?? [])],
+  }))
+}
 
-        // Update plot with all traces at once
-        Plotly.update(
-          this.$refs.chart,
-          this.agentTraces,
-          { 'xaxis.range': [0, maxX],
-            'yaxis.range': [0, maxY]}
-        )
-    }
+const baseLayout = {
+  xaxis: { range: [0, 2500], title: 'Time (ms)' },
+  yaxis: { range: [0, 25], title: 'Event Count' },
+  height: 400,
+  margin: { t: 20, l: 60, r: 40, b: 40 },
+  showlegend: true,
+}
 
-    // Start updates
-    update()
-  },
+onMounted(() => {
+  const initialTraces = buildTracesFromAgents(agents.value)
+  Plotly.newPlot(chart.value, initialTraces, baseLayout, {
+    displayModeBar: false,
+    responsive: true,
+    staticPlot: false,
+  })
 
-  beforeUnmount() {
-    if (this.animationFrame) cancelAnimationFrame(this.animationFrame)
-    if (this.$refs.chart) {
-      this.resizeObserver.unobserve(this.$refs.chart)
-      this.resizeObserver.disconnect()
-      Plotly.purge(this.$refs.chart)
-    }
+  // Initialize indices and last lengths
+  const indexMap = new Map()
+  const lenMap = new Map()
+  initialTraces.forEach((t, i) => {
+    const id = agents.value[i]?.id ?? `trace-${i}`
+    indexMap.set(id, i)
+    lenMap.set(id, agents.value[i]?.x?.length ?? 0)
+  })
+  traceIndexById.value = indexMap
+  lastLenById.value = lenMap
+
+  // Resize handling
+  resizeObserver.value = new ResizeObserver(() => {
+    if (chart.value) Plotly.Plots.resize(chart.value)
+  })
+  resizeObserver.value.observe(chart.value)
+})
+
+onBeforeUnmount(() => {
+  resizeObserver.value?.disconnect()
+  if (chart.value) Plotly.purge(chart.value)
+})
+
+// Streaming updates using extendTraces
+watchEffect(() => {
+  if (!chart.value) return
+
+  const currAgents = agents.value
+  const idSet = new Set(currAgents.map(a => a.id))
+
+  // 1) Remove traces whose agents disappeared
+  const toDelete = []
+  for (const [id, idx] of traceIndexById.value.entries()) {
+    if (!idSet.has(id)) toDelete.push(idx)
   }
+  if (toDelete.length) {
+    // Delete in descending order to keep indices correct
+    toDelete.sort((a, b) => b - a)
+    Plotly.deleteTraces(chart.value, toDelete)
+
+    // Rebuild index map to match current agents order
+    const newIndexMap = new Map()
+    currAgents.forEach((a, i) => newIndexMap.set(a.id, i))
+    traceIndexById.value = newIndexMap
+
+    // Rebuild lastLen map (cap to current lengths)
+    const newLenMap = new Map()
+    currAgents.forEach(a => {
+      const prev = lastLenById.value.get(a.id) ?? (a.x?.length ?? 0)
+      newLenMap.set(a.id, Math.min(prev, a.x?.length ?? 0))
+    })
+    lastLenById.value = newLenMap
+  }
+
+  // 2) Add any new agents
+  const addTraces = []
+  const addIds = []
+  currAgents.forEach((a, i) => {
+    if (!traceIndexById.value.has(a.id)) {
+      addTraces.push({
+        uid: a.id,
+        name: a.id,
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: colorForIndex(i), width: 2 },
+        x: [...(a.x ?? [])],
+        y: [...(a.y ?? [])],
+      })
+      addIds.push(a.id)
+    }
+  })
+  if (addTraces.length) {
+    Plotly.addTraces(chart.value, addTraces)
+    // Compute indices of newly appended traces
+    const startIdx = chart.value.data.length - addTraces.length
+    addIds.forEach((id, k) => {
+      traceIndexById.value.set(id, startIdx + k)
+      const a = currAgents.find(x => x.id === id)
+      lastLenById.value.set(id, a?.x?.length ?? 0)
+    })
+  }
+
+  // 3) Prepare extend/rewrite operations
+  const extendXs = []
+  const extendYs = []
+  const extendIndices = []
+
+  const resetOps = [] // { index, x, y, id }
+
+  currAgents.forEach((a) => {
+    const id = a.id
+    const idx = traceIndexById.value.get(id)
+    if (idx == null) return
+
+    const xArr = a.x ?? []
+    const yArr = a.y ?? []
+    const prevLen = lastLenById.value.get(id) ?? 0
+    const currLen = xArr.length
+
+    // Detect data reset or time going backwards
+    const lengthShrank = currLen < prevLen
+    const wentBackwards = prevLen > 0 && currLen > 0 && xArr[Math.min(prevLen, currLen) - 1] > xArr[currLen - 1]
+
+    if (lengthShrank || wentBackwards) {
+      resetOps.push({ index: idx, x: [...xArr], y: [...yArr], id })
+      return
+    }
+
+    if (currLen > prevLen) {
+      extendXs.push(xArr.slice(prevLen))
+      extendYs.push(yArr.slice(prevLen))
+      extendIndices.push(idx)
+    }
+  })
+
+  // 3a) Apply full restyles for traces that reset
+  if (resetOps.length) {
+    const indices = resetOps.map(op => op.index)
+    const xs = resetOps.map(op => op.x)
+    const ys = resetOps.map(op => op.y)
+    Plotly.restyle(chart.value, { x: xs, y: ys }, indices)
+
+    // Update last lengths
+    resetOps.forEach(op => {
+      // Find the agent by id (safer than reading via index after restyle)
+      const a = currAgents.find(x => x.id === op.id)
+      lastLenById.value.set(op.id, a?.x?.length ?? op.x.length)
+    })
+  }
+
+  // 3b) Append new points via extendTraces
+  if (extendIndices.length) {
+    Plotly.extendTraces(
+        chart.value,
+        { x: extendXs, y: extendYs },
+        extendIndices,
+    )
+    // Update last lengths for extended traces
+    currAgents.forEach((a) => {
+      const idx = traceIndexById.value.get(a.id)
+      if (extendIndices.includes(idx)) {
+        lastLenById.value.set(a.id, a.x.length)
+      }
+    })
+  }
+
+  // 4) Update axes based on current data
+  const lastXs = currAgents.map(a => (a.x?.length ? a.x[a.x.length - 1] : 0))
+  const allYs = currAgents.flatMap(a => a.y ?? [])
+  const maxXRaw = lastXs.length ? Math.max(...lastXs) : 0
+  const maxYRaw = allYs.length ? Math.max(...allYs) : 1
+  const maxX = Math.ceil(maxXRaw / props.xAxisStep) * props.xAxisStep
+  const maxY = Math.ceil(maxYRaw / props.yAxisStep) * props.yAxisStep
+
+  Plotly.relayout(chart.value, {
+    'xaxis.range': [0, maxX],
+    'yaxis.range': [0, maxY],
+  })
 })
 </script>
 
 <template>
   <div class="instrumentation real-time">
     <div ref="chart" class="chart-container"></div>
+    <p>agent data version ({{ dataVersion }})</p>
   </div>
 </template>
 
