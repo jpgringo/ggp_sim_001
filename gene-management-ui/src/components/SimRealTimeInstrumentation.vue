@@ -5,21 +5,14 @@ import Plotly from 'plotly.js-dist-min'
 export default defineComponent({
   name: 'SimRealTimeInstrumentation',
   data() {
-    const maxPoints = 50
     return {
       animationFrame: null,
       resizeObserver: null,
       lastUpdate: 0,
       timer: null,
-      traces: [
-        { name: 'Agent 1', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#FF1919', width: 2 } },
-        { name: 'Agent 2', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#19FF19', width: 2 } },
-        { name: 'Agent 3', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#1919FF', width: 2 } },
-        { name: 'Agent 4', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#FFB619', width: 2 } }
-      ],
       layout: {
         xaxis: {
-          range: [Date.now() - 5000, Date.now()],
+          range: [0, 2500],
           title: 'Time (ms)'
         },
         yaxis: {
@@ -32,23 +25,29 @@ export default defineComponent({
       }
     }
   },
+  props: {
+    xAxisStep: {
+      type: Number,
+      default: 50
+    },
+    yAxisStep: {
+      type: Number,
+      default: 10
+    },
+    agentTraces: {
+      type: Array,
+      required: true,
+      default: () => ([
+      { name: 'Agent 1', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#FF1919', width: 2 } },
+      { name: 'Agent 2', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#19FF19', width: 2 } },
+      { name: 'Agent 3', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#1919FF', width: 2 } },
+      { name: 'Agent 4', x: [], y: [], type: 'scatter', mode: 'lines', line: { color: '#FFB619', width: 2 } }
+    ])},
 
+  },
   mounted() {
-    const now = Date.now()
-    
-    // Pre-allocate arrays for better performance
-    const maxPoints = 50
-    this.traces.forEach(trace => {
-      trace.x = new Array(maxPoints).fill(0)
-      trace.y = new Array(maxPoints).fill(0)
-      for (let i = 0; i < maxPoints; i++) {
-        trace.x[i] = now - (maxPoints - i) * 100
-        trace.y[i] = Math.floor(Math.random() * 25)
-      }
-    })
-
     // Create plot
-    Plotly.newPlot(this.$refs.chart, this.traces, this.layout, {
+    Plotly.newPlot(this.$refs.chart, this.agentTraces, this.layout, {
       displayModeBar: false,
       responsive: true,
       transition: {
@@ -65,40 +64,27 @@ export default defineComponent({
 
     // Update function using requestAnimationFrame
     const update = () => {
-      const now = Date.now()
-      const elapsed = now - this.lastUpdate
+      const maxX = Math.ceil(this.agentTraces.reduce((acc, series) => {
+        console.log(`series:`, series);
+        const lastX = series.x.length > 0 ? series.x[series.x.length - 1] : 0
+        acc = Math.max(acc, lastX)
+        return acc
+      }, 0) / this.xAxisStep) * this.xAxisStep
 
-      // Limit updates to ~10 FPS for performance
-      if (elapsed > 100) {
-        this.lastUpdate = now
-      
-      // Update all traces in a single call
-      const updates = {
-        x: [],
-        y: []
-      }
+      let yValues = this.agentTraces.flatMap(trace => trace.y);
+      console.log(`yValues:`, yValues);
+      const maxY = Math.ceil(Math.max(...yValues)/this.yAxisStep) * this.yAxisStep
 
-      this.traces.forEach(trace => {
-        // Use circular buffer approach
-        trace.x.shift()
-        trace.y.shift()
-        trace.x.push(now)
-        trace.y.push(Math.floor(Math.random() * 25))
-
-        updates.x.push([...trace.x])
-        updates.y.push([...trace.y])
-      })
+      console.log(`maxX=${maxX}`);
+      console.log(`maxY=${maxY}`);
 
         // Update plot with all traces at once
         Plotly.update(
           this.$refs.chart,
-          updates,
-          { 'xaxis.range': [now - 5000, now] }
+          this.agentTraces,
+          { 'xaxis.range': [0, maxX],
+            'yaxis.range': [0, maxY]}
         )
-      }
-
-      // Schedule next update
-      this.animationFrame = requestAnimationFrame(update)
     }
 
     // Start updates
