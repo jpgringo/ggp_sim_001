@@ -63,12 +63,22 @@ const baseLayout = {
   showlegend: true,
 }
 
-// Track whether we are displaying time in seconds (x/1000) or milliseconds (raw)
-const usingSeconds = ref(false)
+// Track the current time unit for the x-axis: 'ms' | 's' | 'min'
+const TimeUnit = Object.freeze({ ms: 'ms', s: 's', min: 'min' })
+const xTimeUnit = ref(TimeUnit.ms)
+
+function scaleFactorForUnit(unit) {
+  switch (unit) {
+    case TimeUnit.s: return 1000
+    case TimeUnit.min: return 60000
+    default: return 1
+  }
+}
 
 function scaleXArray(xs) {
   if (!Array.isArray(xs)) return xs
-  return usingSeconds.value ? xs.map(v => (v != null ? v / 1000 : v)) : xs
+  const denom = scaleFactorForUnit(xTimeUnit.value)
+  return denom === 1 ? xs : xs.map(v => (v != null ? v / denom : v))
 }
 
 onMounted(() => {
@@ -116,7 +126,7 @@ watchEffect(() => {
       Plotly.react(chart.value, [], baseLayout, { displayModeBar: false, responsive: true })
     }
     // Reset unit mode to default (ms) for a new plot
-    usingSeconds.value = false
+    xTimeUnit.value = TimeUnit.ms
     traceIndexById.value = new Map()
     lastLenById.value = new Map()
     return
@@ -190,7 +200,7 @@ watchEffect(() => {
         name: a.id,
         type: 'scatter',
         mode: 'lines',
-        line: { color: colorForIndex(i), width: 2, dash: dashValue },
+        line: { color: colorForIndex(Math.floor(i/2)), width: 2, dash: dashValue },
         opacity: opacityValue,
         x: hasData ? xArr : [0],
         y: hasData ? yArr : [null],
@@ -296,14 +306,15 @@ watchEffect(() => {
   const maxX = Math.ceil(maxXRaw / props.xAxisStep) * props.xAxisStep
   const maxY = Math.ceil(maxYRaw / props.yAxisStep) * props.yAxisStep
 
-  // Decide units: if upper range in ms would be >= 5000, switch to seconds
+  // Decide units based on proposed upper bound in milliseconds
   const proposedUpperMs = Math.max(500, maxX)
-  const shouldUseSeconds = proposedUpperMs >= 5000
+  let newUnit = TimeUnit.ms
+  if (proposedUpperMs >= 300000) newUnit = TimeUnit.min
+  else if (proposedUpperMs >= 5000) newUnit = TimeUnit.s
 
   // If unit mode changes, restyle all X data to the new units
-  if (shouldUseSeconds !== usingSeconds.value) {
-    usingSeconds.value = shouldUseSeconds
-    // Restyle all traces with transformed X values
+  if (newUnit !== xTimeUnit.value) {
+    xTimeUnit.value = newUnit
     const allXs = currSeries.map(a => scaleXArray([...(a.x ?? [])]))
     const allYs = currSeries.map(a => [...(a.y ?? [])])
     const indices = allXs.map((_, i) => i)
@@ -312,14 +323,35 @@ watchEffect(() => {
     }
   }
 
-  const xUpper = usingSeconds.value ? proposedUpperMs / 1000 : proposedUpperMs
-  const xTitle = usingSeconds.value ? 'Time (s)' : 'Time (ms)'
+  const denom = scaleFactorForUnit(xTimeUnit.value)
+  const xUpper = proposedUpperMs / denom
+  const xTitle = xTimeUnit.value === TimeUnit.ms ? 'Time (ms)'
+                 : xTimeUnit.value === TimeUnit.s ? 'Time (s)'
+                 : 'Time (mins)'
 
-  Plotly.relayout(chart.value, {
+  // Choose tick step for minutes to allow 0.25 or 0.5 minute subdivisions as space permits
+  const relayout = {
     'xaxis.range': [0, xUpper],
     'xaxis.title.text': xTitle,
     'yaxis.range': [0, Math.max(10, maxY)],
-  })
+  }
+  if (xTimeUnit.value === TimeUnit.min) {
+    // Aim for about 6–10 ticks
+    const targetTicks = 8
+    const rawDt = xUpper / targetTicks
+    // Snap to 0.25, 0.5, 1, 2, 5 minute steps
+    const candidates = [0.25, 0.5, 1, 2, 5, 10, 15, 30]
+    let dtick = candidates[0]
+    for (const c of candidates) { if (c >= rawDt) { dtick = c; break } }
+    relayout['xaxis.dtick'] = dtick
+    relayout['xaxis.tickformat'] = '~r'
+  } else {
+    // Clear any minute-specific tick settings when not in minutes
+    relayout['xaxis.dtick'] = null
+    relayout['xaxis.tickformat'] = null
+  }
+
+  Plotly.relayout(chart.value, relayout)
 })
 </script>
 
