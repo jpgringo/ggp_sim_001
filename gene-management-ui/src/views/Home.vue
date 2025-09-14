@@ -62,6 +62,8 @@ const onSimMessage = (msg) => {
     case "actuator_sent":
       simStore.actuatorSent(msg.data)
       break;
+    default:
+      console.warn("UNKNOWN MESSAGE RECEIVED!!!", msg)
   }
 }
 

@@ -4,6 +4,7 @@ defmodule GeneticsEngine.Sim.Scenario do
   use GenServer
   require Logger
   require DirectDebug
+  require Broadcaster
 
   alias GeneticsEngine.Onta.Ontos
 #  alias GeneticsEngine.Reports.ScenarioRunReportServer
@@ -30,7 +31,9 @@ defmodule GeneticsEngine.Sim.Scenario do
     DirectDebug.warning("on_agent_reached_target!! scenario_id=#{scenario_id}, agent_id=#{agent_id}")
     case Registry.lookup(GeneticsEngine.Sim.ScenarioRegistry, scenario_id) do
       [{scenario_pid, _}] ->
-        GenServer.cast(scenario_pid, {:close_ontos, agent_id})
+#        agent_state = Ontos.get_state(agent_id)
+        {:ok, agent_state} = GenServer.call(scenario_pid, {:close_ontos, agent_id})
+        Broadcaster.broadcast(:ontos_events, :target_reached, agent_state)
       [] ->
         DirectDebug.warning("Received sensor data for unknown scenario #{scenario_id}", true)
     end
@@ -98,6 +101,23 @@ defmodule GeneticsEngine.Sim.Scenario do
   end
 
   @impl true
+  def handle_call({:close_ontos, agent_id}, _from, state) do
+    DirectDebug.info("#{state.name} will close Ontos #{inspect(agent_id)} (active onta: #{inspect(length(DynamicSupervisor.which_children(state.ontasup)))})")
+    ontos_final_state = Ontos.close("#{state.id}_#{agent_id}")
+    DirectDebug.warning("ONTOS_FINAL_STATE: #{inspect(ontos_final_state)}")
+    DirectDebug.info("#{state.name} got final state for Ontos #{inspect(agent_id)}: #{inspect(ontos_final_state)}")
+    closed_onta = [ontos_final_state | Map.get(state, :closed_onta, [])]
+    DirectDebug.info("#{state.name} - closed_onta: #{inspect(closed_onta)}")
+
+    if length(DynamicSupervisor.which_children(state.ontasup)) == 0 do
+      GeneticsEngine.Sim.SimController.on_scenario_complete(state.id)
+    else
+      DirectDebug.section("scenario #{inspect(state.name)} has #{length(DynamicSupervisor.which_children(state.ontasup))} children remaining")
+    end
+    {:reply, {:ok, ontos_final_state}, Map.merge(state, %{closed_onta: closed_onta})}
+  end
+
+  @impl true
   def handle_call(_msg, _from, state) do
     {:reply, :ok, state}
   end
@@ -119,23 +139,6 @@ defmodule GeneticsEngine.Sim.Scenario do
       end
     end)
     {:noreply, state}
-  end
-
-  @impl true
-  def handle_cast({:close_ontos, agent_id}, state) do
-    DirectDebug.info("#{state.name} will close Ontos #{inspect(agent_id)} (active onta: #{inspect(length(DynamicSupervisor.which_children(state.ontasup)))})")
-    ontos_final_state = Ontos.close("#{state.id}_#{agent_id}")
-    DirectDebug.warning("ONTOS_FINAL_STATE: #{inspect(ontos_final_state)}")
-    DirectDebug.info("#{state.name} got final state for Ontos #{inspect(agent_id)}: #{inspect(ontos_final_state)}")
-    closed_onta = [ontos_final_state | Map.get(state, :closed_onta, [])]
-    DirectDebug.info("#{state.name} - closed_onta: #{inspect(closed_onta)}")
-
-    if length(DynamicSupervisor.which_children(state.ontasup)) == 0 do
-      GeneticsEngine.Sim.SimController.on_scenario_complete(state.id)
-      else
-      DirectDebug.section("scenario #{inspect(state.name)} has #{length(DynamicSupervisor.which_children(state.ontasup))} children remaining")
-    end
-    {:noreply, Map.merge(state, %{closed_onta: closed_onta})}
   end
 
   def handle_cast(:destroy, state) do

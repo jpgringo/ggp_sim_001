@@ -60,6 +60,13 @@ defmodule GeneticsEngine.SimulationSocket do
   end
 
   @impl WebSock
+  def handle_info({:ontos_events, :target_reached, data}, state) do
+    DirectDebug.warning("handling :ontos_event `:target_reached`. data: #{inspect(data)}")
+    message = Jason.encode!(%{type: "target_reached", data: data})
+    {:push, {:text, message}, state}
+  end
+
+  @impl WebSock
   def handle_info({:simulation_run_started, data}, state) do
     DirectDebug.error("SimulationSocket received simulation_run_started: #{inspect(data)}")
     broadcast_start(data)
