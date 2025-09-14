@@ -5,48 +5,13 @@ import SimRealTimeInstrumentation from "@/components/SimRealTimeInstrumentation.
 
 const simStore = useSimStore()
 
-const agentData = reactive({
-  version: 0,
-  agents: [
-    {id: "12345", x: [0], y: [0]},
-    {id: "23456", x: [0], y: [0]}
-  ]
-})
-
-const addSampleAgentData = (newPointCount) => {
-  const maxInterval = 50
-  const maxPoints = 10
-  newPointCount = newPointCount === undefined ? maxPoints : newPointCount
-  agentData.agents.forEach(agent => {
-
-    console.log(`adding point to `, agent);
-    let lastX = agent.x.length > 0 ? agent.x[agent.x.length - 1] : 0
-    for (let i = 0; i < newPointCount; i++) {
-      let interval = Math.floor(Math.random() * maxInterval)
-      lastX += interval
-      agent.x.push(lastX)
-      agent.y.push(Math.floor(Math.random() * 8))
-    }
-  })
-  agentData.version++
-}
-
 function addPoints() {
-  addSampleAgentData(1)
+  simStore.addSampleAgentData(1)
 }
-
-addSampleAgentData()
 
 onMounted(() => {
-  console.log(`SimInstrumentPanel is mounting!!`, agentData);
+  console.log(`SimInstrumentPanel is mounting!!`, simStore.agentData);
 })
-
-// Watch for changes to activeScenario, particularly nullish <-> value transitions
-function onScenarioActivated(scenario) {
-  console.log('[SimInstrumentPanel] Scenario activated:', scenario)
-  initializeAgentData(scenario)
-  // Placeholder: initialize instrumentation data, subscriptions, etc.
-}
 
 function onScenarioDeactivated(prevScenario) {
   console.log('[SimInstrumentPanel] Scenario deactivated. Previous scenario:', prevScenario)
@@ -58,14 +23,9 @@ function onScenarioChanged(newScenario, oldScenario) {
   // Placeholder: handle scenario switch without going through null
 }
 
-function initializeAgentData(scenario) {
-  agentData.agents = scenario.agents.map(agent => ({id: agent.id, x: [0], y: [0]}))
-  agentData.version = 0
-}
-
 function loadSampleScenario() {
   const sampleScenario = {
-    "id": "292Z27D8",
+    "id": "KJZQQG52",
     "name": "map_0003.json_292Z27D8",
     "agents": [
       {
@@ -79,7 +39,26 @@ function loadSampleScenario() {
     ],
     "scenario_name": "map_0003.json"
   }
-  onScenarioActivated(sampleScenario)
+  simStore.scenarioStarted(sampleScenario)
+}
+
+let lastElapsedTime = 0
+function addSampleActuatorData() {
+  const runId = "KJZQQG52"
+  const rawId = ["6939845068186", "6939845068187"][Math.floor(Math.random() * 2)]
+  const maxInterval = 50
+  lastElapsedTime = lastElapsedTime + Math.ceil(Math.random() * maxInterval)
+  const data =
+      {
+        "run_id": runId,
+        "available_actuators": 1,
+        "actuators_issued": Math.ceil(Math.random() * 17),
+        "raw_id": rawId,
+        "agent_id": `${runId}_${rawId}`,
+        "sensor_data_received": Math.ceil(Math.random() * 50),
+        "elapsed_time": lastElapsedTime
+      }
+  simStore.actuatorSent(data)
 }
 
 watch(
@@ -89,7 +68,7 @@ watch(
       const isNullish = newVal == null
 
       if (wasNullish && !isNullish) {
-        onScenarioActivated(newVal)
+        // onScenarioActivated(newVal)
       } else if (!wasNullish && isNullish) {
         onScenarioDeactivated(oldVal)
       } else if (!wasNullish && !isNullish && newVal !== oldVal) {
@@ -105,11 +84,12 @@ watch(
   <p>Running? {{ simStore.running }}</p>
   <p>Active scenario: {{ simStore.activeScenario }}</p>
   <SimRealTimeInstrumentation
-      :agent-data="agentData"
+      :agent-data="simStore.agentData"
   ></SimRealTimeInstrumentation>
   <p>
     <button @click="loadSampleScenario">Load Sample Scenario</button>
     <button @click="addPoints">Add Points</button>
+    <button @click="addSampleActuatorData">Add Sample Actuator Data</button>
   </p>
 </template>
 

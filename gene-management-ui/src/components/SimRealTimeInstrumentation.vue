@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watchEffect, computed } from 'vue'
 import Plotly from 'plotly.js-dist-min'
+import {useSimStore} from "../../stores/simStore.js";
+
+const simStore = useSimStore()
 
 const props = defineProps({
   xAxisStep: { type: Number, default: 50 },
@@ -278,7 +281,6 @@ watchEffect(() => {
 <template>
   <div class="instrumentation real-time">
     <div ref="chart" class="chart-container"></div>
-    <p>agent data version ({{ dataVersion }})</p>
   </div>
 </template>
 

@@ -118,7 +118,8 @@ defmodule GeneticsEngine.Onta.Ontos do
       actuators_issued: 0,
       numen_supervisor: numen_sup,
       numen_pids: numen_pids,
-      sensor_table: table_name
+      sensor_table: table_name,
+      started_at: System.monotonic_time(:millisecond)
     }}
   end
 
@@ -216,7 +217,11 @@ defmodule GeneticsEngine.Onta.Ontos do
     new_state = %{state | actuators_issued: total_actuators_issued}
     if Process.whereis(:pg) != nil do
       DirectDebug.warning("Sending to :scenario_events process group…")
-      Enum.each(:pg.get_members(:ontos_events), & send(&1, {:ontos_events, :actuator_sent, Map.drop(new_state, [:numen_supervisor, :numen_pids])}))
+      now_ms = System.monotonic_time(:millisecond)
+      payload = new_state
+                |> Map.drop([:numen_supervisor, :numen_pids, :sensor_table, :started_at])
+                |> Map.put(:elapsed_time, now_ms - new_state.started_at)
+      Enum.each(:pg.get_members(:ontos_events), & send(&1, {:ontos_events, :actuator_sent, payload}))
     end
 
     {:noreply, new_state}

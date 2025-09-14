@@ -59,6 +59,9 @@ const onSimMessage = (msg) => {
     case "stop":
       simStore.scenarioStopped(msg);
       break;
+    case "actuator_sent":
+      simStore.actuatorSent(msg.data)
+      break;
   }
 }
 
