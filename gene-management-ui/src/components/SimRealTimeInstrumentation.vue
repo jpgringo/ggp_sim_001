@@ -20,7 +20,6 @@ const traceIndexById = ref(new Map())
 const lastLenById = ref(new Map())
 
 const series = computed(() => props.agentData?.series ?? [])
-const dataVersion = computed(() => props.agentData?.version ?? 0)
 
 // Use a Brewer color scale from chroma-js for trace colors
 // Other options are Accent, Viridis, Spectral, Dark2, Paired, etc. See https://www.vis4.net/chromajs/#chroma-brewer
@@ -35,7 +34,8 @@ const colorForIndex = (i) => {
 
 function buildTracesFromAgents(currSeries) {
   return currSeries.map((d, i) => {
-    const xArr = [...(d.x ?? [])]
+    const rawX = [...(d.x ?? [])]
+    const xArr = scaleXArray(rawX)
     const yArr = [...(d.y ?? [])]
     const hasData = xArr.length > 0 && yArr.length > 0
     const dashValue = (i % 2 === 0) ? 'solid' : 'dash'
@@ -56,11 +56,19 @@ function buildTracesFromAgents(currSeries) {
 }
 
 const baseLayout = {
-  xaxis: { range: [0, 500], title: 'Time (ms)' },
-  yaxis: { range: [0, 10], title: 'Event Count' },
+  xaxis: { range: [0, 500], title: { text: 'Time (ms)' } },
+  yaxis: { range: [0, 10], title: { text: 'Event Count' } },
   height: 400,
   margin: { t: 20, l: 60, r: 40, b: 40 },
   showlegend: true,
+}
+
+// Track whether we are displaying time in seconds (x/1000) or milliseconds (raw)
+const usingSeconds = ref(false)
+
+function scaleXArray(xs) {
+  if (!Array.isArray(xs)) return xs
+  return usingSeconds.value ? xs.map(v => (v != null ? v / 1000 : v)) : xs
 }
 
 onMounted(() => {
@@ -107,6 +115,8 @@ watchEffect(() => {
     if ((chart.value.data?.length ?? 0) > 0) {
       Plotly.react(chart.value, [], baseLayout, { displayModeBar: false, responsive: true })
     }
+    // Reset unit mode to default (ms) for a new plot
+    usingSeconds.value = false
     traceIndexById.value = new Map()
     lastLenById.value = new Map()
     return
@@ -170,7 +180,7 @@ watchEffect(() => {
   const addIds = []
   currSeries.forEach((a, i) => {
     if (!traceIndexById.value.has(a.id)) {
-      const xArr = [...(a.x ?? [])]
+      const xArr = scaleXArray([...(a.x ?? [])])
       const yArr = [...(a.y ?? [])]
       const hasData = xArr.length > 0 && yArr.length > 0
       const dashValue = (i % 2 === 0) ? 'solid' : 'dash'
@@ -240,7 +250,7 @@ watchEffect(() => {
     const validOps = resetOps.filter(op => Number.isInteger(op.index) && op.index >= 0 && op.index <= maxIdx)
     if (validOps.length) {
       const indices = validOps.map(op => op.index)
-      const xs = validOps.map(op => op.x)
+      const xs = validOps.map(op => scaleXArray(op.x))
       const ys = validOps.map(op => op.y)
       Plotly.restyle(chart.value, { x: xs, y: ys }, indices)
 
@@ -259,7 +269,7 @@ watchEffect(() => {
     const maxIdx2 = (chart.value.data?.length ?? 0) - 1
     const validIdx = extendIndices.filter(i => Number.isInteger(i) && i >= 0 && i <= maxIdx2)
     const idxMap = new Map(validIdx.map((i, k) => [i, k]))
-    const xsValid = validIdx.map(i => extendXs[idxMap.get(i)])
+    const xsValid = validIdx.map(i => scaleXArray(extendXs[idxMap.get(i)]))
     const ysValid = validIdx.map(i => extendYs[idxMap.get(i)])
 
     if (validIdx.length) {
@@ -286,8 +296,28 @@ watchEffect(() => {
   const maxX = Math.ceil(maxXRaw / props.xAxisStep) * props.xAxisStep
   const maxY = Math.ceil(maxYRaw / props.yAxisStep) * props.yAxisStep
 
+  // Decide units: if upper range in ms would be >= 5000, switch to seconds
+  const proposedUpperMs = Math.max(500, maxX)
+  const shouldUseSeconds = proposedUpperMs >= 5000
+
+  // If unit mode changes, restyle all X data to the new units
+  if (shouldUseSeconds !== usingSeconds.value) {
+    usingSeconds.value = shouldUseSeconds
+    // Restyle all traces with transformed X values
+    const allXs = currSeries.map(a => scaleXArray([...(a.x ?? [])]))
+    const allYs = currSeries.map(a => [...(a.y ?? [])])
+    const indices = allXs.map((_, i) => i)
+    if (allXs.length) {
+      Plotly.restyle(chart.value, { x: allXs, y: allYs }, indices)
+    }
+  }
+
+  const xUpper = usingSeconds.value ? proposedUpperMs / 1000 : proposedUpperMs
+  const xTitle = usingSeconds.value ? 'Time (s)' : 'Time (ms)'
+
   Plotly.relayout(chart.value, {
-    'xaxis.range': [0, Math.max(500, maxX)],
+    'xaxis.range': [0, xUpper],
+    'xaxis.title.text': xTitle,
     'yaxis.range': [0, Math.max(10, maxY)],
   })
 })
