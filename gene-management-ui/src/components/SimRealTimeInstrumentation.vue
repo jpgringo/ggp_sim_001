@@ -42,7 +42,7 @@ function buildTracesFromAgents(currSeries) {
     const opacityValue = (i % 2 === 0) ? 1 : 0.5
     return {
       uid: d.id ?? `trace-${i}`,
-      name: d.id ?? `Trace ${i + 1}`,
+      name: d.label ?? `Trace ${i + 1}`,
       type: 'scatter',
       mode: 'lines',
       line: { color: colorForIndex(Math.floor(i/2)), width: 2, dash: dashValue },

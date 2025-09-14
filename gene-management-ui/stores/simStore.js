@@ -2,9 +2,9 @@ import {defineStore} from 'pinia';
 
 function initializeAgentData(state, scenario) {
   state.agentData.series = []
-  scenario.agents.forEach(agent => {
-    state.agentData.series.push({id: agent.id, x: [0], y: [0]})
-    state.agentData.series.push({id: agent.id + "_s", x: [0], y: [0]})
+  scenario.agents.forEach((agent, i) => {
+    state.agentData.series.push({id: agent.id, label: `agent ${i} A`, x: [0], y: [0]})
+    state.agentData.series.push({id: agent.id + "_s", label: `agent ${i} S`,x: [0], y: [0]})
   })
   state.agentData.version = 0
 }
