@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watchEffect, computed } from 'vue'
 import Plotly from 'plotly.js-dist-min'
 import {useSimStore} from "../../stores/simStore.js";
+import chroma from 'chroma-js'
 
 const simStore = useSimStore()
 
@@ -18,23 +19,34 @@ const resizeObserver = ref(null)
 const traceIndexById = ref(new Map())
 const lastLenById = ref(new Map())
 
-const agents = computed(() => props.agentData?.agents ?? [])
+const series = computed(() => props.agentData?.series ?? [])
 const dataVersion = computed(() => props.agentData?.version ?? 0)
 
-const palette = ['#FF1919', '#19FF19', '#1919FF', '#FFB619', '#9B59B6', '#1ABC9C', '#F39C12', '#2ECC71']
-const colorForIndex = (i) => palette[i % palette.length]
+// Use a Brewer color scale from chroma-js for trace colors
+// Other options are Accent, Viridis, Spectral, Dark2, Paired, etc. See https://www.vis4.net/chromajs/#chroma-brewer
+// We generate colors on demand to support any number of series
+const palette = chroma.scale('Spectral').mode('lrgb')
+const colorForIndex = (i) => {
+  // Map discrete index to a position in [0,1] with golden ratio spacing to avoid early repeats
+  const phi = (Math.sqrt(5) - 1) / 2 // ~0.6180339887
+  const t = (i * phi) % 1
+  return palette(t).hex()
+}
 
-function buildTracesFromAgents(currAgents) {
-  return currAgents.map((d, i) => {
+function buildTracesFromAgents(currSeries) {
+  return currSeries.map((d, i) => {
     const xArr = [...(d.x ?? [])]
     const yArr = [...(d.y ?? [])]
     const hasData = xArr.length > 0 && yArr.length > 0
+    const dashValue = (i % 2 === 0) ? 'solid' : 'dash'
+    const opacityValue = (i % 2 === 0) ? 1 : 0.5
     return {
       uid: d.id ?? `trace-${i}`,
       name: d.id ?? `Trace ${i + 1}`,
       type: 'scatter',
       mode: 'lines',
-      line: { color: colorForIndex(i), width: 2 },
+      line: { color: colorForIndex(Math.floor(i/2)), width: 2, dash: dashValue },
+      opacity: opacityValue,
       x: hasData ? xArr : [0],
       y: hasData ? yArr : [null],
       // Show in legend even if there is no data yet
@@ -52,7 +64,7 @@ const baseLayout = {
 }
 
 onMounted(() => {
-  const initialTraces = buildTracesFromAgents(agents.value)
+  const initialTraces = buildTracesFromAgents(series.value)
   Plotly.newPlot(chart.value, initialTraces, baseLayout, {
     displayModeBar: false,
     responsive: true,
@@ -63,9 +75,9 @@ onMounted(() => {
   const indexMap = new Map()
   const lenMap = new Map()
   initialTraces.forEach((t, i) => {
-    const id = (agents.value[i]?.id ?? t.uid ?? `trace-${i}`)
+    const id = (series.value[i]?.id ?? t.uid ?? `trace-${i}`)
     indexMap.set(id, i)
-    lenMap.set(id, agents.value[i]?.x?.length ?? t.x?.length ?? 0)
+    lenMap.set(id, series.value[i]?.x?.length ?? t.x?.length ?? 0)
   })
   traceIndexById.value = indexMap
   lastLenById.value = lenMap
@@ -86,11 +98,11 @@ onBeforeUnmount(() => {
 watchEffect(() => {
   if (!chart.value) return
 
-  const currAgents = agents.value
-  const idSet = new Set(currAgents.map(a => a.id))
+  const currSeries = series.value
+  const idSet = new Set(currSeries.map(a => a.id))
 
-  // If no agents, clear the chart and reset state
-  if (!currAgents.length) {
+  // If no series, clear the chart and reset state
+  if (!currSeries.length) {
     // Reset plot to empty if needed
     if ((chart.value.data?.length ?? 0) > 0) {
       Plotly.react(chart.value, [], baseLayout, { displayModeBar: false, responsive: true })
@@ -100,26 +112,26 @@ watchEffect(() => {
     return
   }
 
-  // If the Plotly graph has no traces yet but we do have agents, seed the plot
+  // If the Plotly graph has no traces yet but we do have series, seed the plot
   const gdDataLen = chart.value?.data?.length ?? 0
-  if (gdDataLen === 0 && currAgents.length > 0) {
-    const seeded = buildTracesFromAgents(currAgents)
+  if (gdDataLen === 0 && currSeries.length > 0) {
+    const seeded = buildTracesFromAgents(currSeries)
     Plotly.react(chart.value, seeded, baseLayout, { displayModeBar: false, responsive: true })
 
-    // Build fresh maps based on current agents
+    // Build fresh maps based on current series
     const indexMap0 = new Map()
-    currAgents.forEach((a, i) => indexMap0.set(a.id, i))
+    currSeries.forEach((a, i) => indexMap0.set(a.id, i))
     traceIndexById.value = indexMap0
 
     const lenMap0 = new Map()
-    currAgents.forEach(a => lenMap0.set(a.id, a.x?.length ?? 0))
+    currSeries.forEach(a => lenMap0.set(a.id, a.x?.length ?? 0))
     lastLenById.value = lenMap0
 
     // Avoid extend/reflow in the same tick; next reactive run will handle streaming
     return
   }
 
-  // 1) Remove traces whose agents disappeared
+  // 1) Remove traces whose series disappeared
   const toDelete = []
   for (const [id, idx] of traceIndexById.value.entries()) {
     if (!idSet.has(id)) toDelete.push(idx)
@@ -129,44 +141,47 @@ watchEffect(() => {
     toDelete.sort((a, b) => b - a)
     Plotly.deleteTraces(chart.value, toDelete)
 
-    // Rebuild index map to match actual chart data by uid if available; fallback to currAgents order
+    // Rebuild index map to match actual chart data by uid if available; fallback to currSeries order
     const newIndexMap = new Map()
     const gd = chart.value
     if (gd?.data?.length) {
       gd.data.forEach((t, i) => {
-        const uid = t.uid || t.name || currAgents[i]?.id
+        const uid = t.uid || t.name || currSeries[i]?.id
         if (uid) newIndexMap.set(uid, i)
       })
     }
-    // Ensure all current agents have an entry
-    currAgents.forEach((a, i) => {
+    // Ensure all current series have an entry
+    currSeries.forEach((a, i) => {
       if (!newIndexMap.has(a.id)) newIndexMap.set(a.id, i)
     })
     traceIndexById.value = newIndexMap
 
     // Rebuild lastLen map (cap to current lengths)
     const newLenMap = new Map()
-    currAgents.forEach(a => {
+    currSeries.forEach(a => {
       const prev = lastLenById.value.get(a.id) ?? (a.x?.length ?? 0)
       newLenMap.set(a.id, Math.min(prev, a.x?.length ?? 0))
     })
     lastLenById.value = newLenMap
   }
 
-  // 2) Add any new agents
+  // 2) Add any new series
   const addTraces = []
   const addIds = []
-  currAgents.forEach((a, i) => {
+  currSeries.forEach((a, i) => {
     if (!traceIndexById.value.has(a.id)) {
       const xArr = [...(a.x ?? [])]
       const yArr = [...(a.y ?? [])]
       const hasData = xArr.length > 0 && yArr.length > 0
+      const dashValue = (i % 2 === 0) ? 'solid' : 'dash'
+      const opacityValue = (i % 2 === 0) ? 0.6 : 1
       addTraces.push({
         uid: a.id,
         name: a.id,
         type: 'scatter',
         mode: 'lines',
-        line: { color: colorForIndex(i), width: 2 },
+        line: { color: colorForIndex(i), width: 2, dash: dashValue },
+        opacity: opacityValue,
         x: hasData ? xArr : [0],
         y: hasData ? yArr : [null],
         visible: hasData ? true : 'legendonly',
@@ -180,7 +195,7 @@ watchEffect(() => {
     const startIdx = chart.value.data.length - addTraces.length
     addIds.forEach((id, k) => {
       traceIndexById.value.set(id, startIdx + k)
-      const a = currAgents.find(x => x.id === id)
+      const a = currSeries.find(x => x.id === id)
       lastLenById.value.set(id, a?.x?.length ?? 0)
     })
   }
@@ -192,7 +207,7 @@ watchEffect(() => {
 
   const resetOps = [] // { index, x, y, id }
 
-  currAgents.forEach((a) => {
+  currSeries.forEach((a) => {
     const id = a.id
     const idx = traceIndexById.value.get(id)
     if (idx == null) return
@@ -232,7 +247,7 @@ watchEffect(() => {
       // Update last lengths
       validOps.forEach(op => {
         // Find the agent by id (safer than reading via index after restyle)
-        const a = currAgents.find(x => x.id === op.id)
+        const a = currSeries.find(x => x.id === op.id)
         lastLenById.value.set(op.id, a?.x?.length ?? op.x.length)
       })
     }
@@ -255,7 +270,7 @@ watchEffect(() => {
       )
     }
     // Update last lengths for extended traces
-    currAgents.forEach((a) => {
+    currSeries.forEach((a) => {
       const idx = traceIndexById.value.get(a.id)
       if (validIdx.includes(idx)) {
         lastLenById.value.set(a.id, a.x.length)
@@ -264,8 +279,8 @@ watchEffect(() => {
   }
 
   // 4) Update axes based on current data
-  const lastXs = currAgents.map(a => (a.x?.length ? a.x[a.x.length - 1] : 0))
-  const allYs = currAgents.flatMap(a => a.y ?? [])
+  const lastXs = currSeries.map(a => (a.x?.length ? a.x[a.x.length - 1] : 0))
+  const allYs = currSeries.flatMap(a => a.y ?? [])
   const maxXRaw = lastXs.length ? Math.max(...lastXs) : 0
   const maxYRaw = allYs.length ? Math.max(...allYs) : 1
   const maxX = Math.ceil(maxXRaw / props.xAxisStep) * props.xAxisStep

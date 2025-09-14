@@ -1,7 +1,11 @@
 import {defineStore} from 'pinia';
 
 function initializeAgentData(state, scenario) {
-  state.agentData.agents = scenario.agents.map(agent => ({id: agent.id, x: [0], y: [0]}))
+  state.agentData.series = []
+  scenario.agents.forEach(agent => {
+    state.agentData.series.push({id: agent.id, x: [0], y: [0]})
+    state.agentData.series.push({id: agent.id + "_s", x: [0], y: [0]})
+  })
   state.agentData.version = 0
 }
 
@@ -34,7 +38,7 @@ export const useSimStore = defineStore('sim', {
       initializeAgentData(this, data)
       this.running = true;
     },
-    scenarioStopped(id) {
+    scenarioStopped(_id) {
       this.activeScenario = undefined;
       this.running = false
     },
@@ -48,16 +52,19 @@ export const useSimStore = defineStore('sim', {
         return
       }
       console.log(`scenario matches, will update agent data`);
-      const matchingAgent = this.agentData.agents.find(a => a.id === data.raw_id)
-      console.log(`matchingAgent:`, matchingAgent);
-      matchingAgent.x.push(data.elapsed_time)
-      matchingAgent.y.push(data.actuators_issued)
+      const matchingActuatorSeries = this.agentData.series.find(a => a.id === data.raw_id)
+      const matchingSensorSeries = this.agentData.series.find(a => a.id === data.raw_id + "_s")
+      console.log(`matchingActuatorSeries:`, matchingActuatorSeries);
+      matchingActuatorSeries.x.push(data.elapsed_time)
+      matchingActuatorSeries.y.push(data.actuators_issued)
+      matchingSensorSeries.x.push(data.elapsed_time)
+      matchingSensorSeries.y.push(data.sensor_data_received)
     },
     addSampleAgentData(newPointCount)  {
       const maxInterval = 50
       const maxPoints = 10
       newPointCount = newPointCount === undefined ? maxPoints : newPointCount
-      this.agentData.agents.forEach(agent => {
+      this.agentData.series.forEach(agent => {
 
         console.log(`adding point to `, agent);
         let lastX = agent.x.length > 0 ? agent.x[agent.x.length - 1] : 0

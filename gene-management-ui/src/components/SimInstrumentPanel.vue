@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, reactive, watch} from 'vue';
+import {onMounted, watch} from 'vue';
 import {useSimStore} from "../../stores/simStore.js";
 import SimRealTimeInstrumentation from "@/components/SimRealTimeInstrumentation.vue";
 

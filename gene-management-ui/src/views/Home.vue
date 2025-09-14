@@ -34,7 +34,7 @@ const handleStartScenario = async (opts) => {
 
 const handleStopScenario = async (scenario) => {
   console.log(`handleStopScenario:`, scenario);
-  let result = await api_connector.stopScenario(scenario);
+  await api_connector.stopScenario(scenario);
   // if(result?.ok) {
   //   simStore.scenarioStarted(opts.scenario, opts.unique_id);
   // }
@@ -43,7 +43,7 @@ const handleStopScenario = async (scenario) => {
 
 const handlePanic = async () => {
   console.log(`handlePanic:`);
-  let result = await api_connector.panic();
+  await api_connector.panic();
   // if(result?.ok) {
   //   simStore.scenarioStarted(opts.scenario, opts.unique_id);
   // }
